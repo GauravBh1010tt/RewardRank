@@ -3,6 +3,7 @@ import sys
 import pdb
 import tqdm
 import torch
+import wandb
 import numpy as np
 import torch.nn as nn
 from copy import deepcopy
@@ -10,6 +11,8 @@ import pytorch_lightning as pl
 import torch.nn.functional as F
 from src.bert import BertModel, BertReward
 from transformers.models.bert.configuration_bert import BertConfig
+
+from src.utils import binary_accuracy
 
 class local_trainer(pl.LightningModule):
 	def __init__(self, train_loader, val_loader, test_dataset, args, eval_mode=False):
@@ -19,6 +22,7 @@ class local_trainer(pl.LightningModule):
 
 		self.config.vocab = 100
 		self.config.num_labels = 1 # regression output
+		self.config.problem_type = args.problem_type
 
 		self.reward_model = BertReward(self.config)
 
@@ -29,55 +33,110 @@ class local_trainer(pl.LightningModule):
 		self.test_dataset = test_dataset
 		self.args = args
 		self.eval_mode = eval_mode
+		self.tr_acc, self.tr_loss = 0.0, 0.0
+		self.val_acc, self.val_loss = 0.0, 0.0
 
 		#self.automatic_optimization = False
 	
-	def forward(self, pixel_values, pixel_mask):
-		outputs = self.model(pixel_values=pixel_values, pixel_mask=pixel_mask)
-		return outputs
+	# def forward(self, pixel_values, pixel_mask):
+	# 	outputs = self.model(pixel_values=pixel_values, pixel_mask=pixel_mask)
+	# 	return outputs
 	
-	def common_step(self, batch, batch_idx, return_outputs=None):
+	def common_step(self, batch, batch_idx):
 
 		feat = batch['query_document_embedding'].to(self.device)
-		avg_click = torch.clamp(batch['click'].sum(dim=1)/3.0, max=1.0).to(self.device)
+		avg_click = torch.clamp(batch['click'].sum(dim=1), max=1.0).to(self.device)
 		pos_idx = batch['position']
+
+		self.labels = avg_click
 
 		out = self.reward_model(inputs_embeds=feat, position_ids=pos_idx, labels=avg_click)
 
-		pdb.set_trace()
-
-		return loss, loss_dict
+		return out
 	
 	def training_step(self, batch, batch_idx): # automatic training schedule
 		
-		loss, loss_dict = self.common_step(batch, batch_idx)
-		# logs metrics for each training_step,
-		# and the average across the epoch
-		#values = {k:v for k,v in loss_dict.items()}
-		short_map = {'loss_ce':'ce','loss_giou':'giou','cardinality_error':'car','training_loss':'tr','loss_bbox':'bbox', 'query_loss':'QL'}
-		self.log("tr", loss, prog_bar=True)
-		for k,v in loss_dict.items():
-			#self.log("train_" + k, v.item(), prog_bar=True)
-			self.log(short_map[k], v.item(), prog_bar=True)
+		out_dict = self.common_step(batch, batch_idx)
+		loss = out_dict['loss']
+		logits = out_dict['logits']
+
+		acc = binary_accuracy(logits.squeeze(), self.labels)
+
+		wandb_out = {"tr_loss": loss, "tr_acc":acc}
+		self.log("tr_loss", loss, prog_bar=True)
+		self.log("tr_acc", acc, prog_bar=True)
+
+		self.tr_acc += float(acc)
+		self.tr_loss += float(loss)
+		
+		if self.args.use_wandb and self.trainer.global_rank==0:
+			wandb.log(wandb_out)
 
 		return loss
 
-	def on_after_backward(self, *args):
-		return
+	# def on_after_backward(self, *args):
+	# 	return
 
 	def on_train_epoch_end(self):
+
+		tr_acc_avg = self.tr_acc/self.trainer.num_training_batches
+		tr_loss_avg = self.tr_loss/self.trainer.num_training_batches
+
+		print('\n Train acc after ', self.current_epoch, ' epochs : ',\
+						tr_acc_avg, '  loss : ',tr_loss_avg, file=self.args.log_file)
+		
 		self.lr_scheduler.step()
 		if self.current_epoch and self.current_epoch%self.args.save_epochs == 0:
 			self.save(self.current_epoch)
 
+		wandb_out = {"tr_loss_global": tr_acc_avg, "tr_acc_gloabl":tr_loss_avg}
+		
+		if self.args.use_wandb and self.trainer.global_rank==0:
+			wandb.log(wandb_out)
+		
+		self.tr_acc = 0.0
+
 	def validation_step(self, batch, batch_idx):
-		loss = 0.0
-		return loss
+		
+		out_dict = self.common_step(batch, batch_idx)
+		loss = out_dict['loss']
+		logits = out_dict['logits']
+
+		acc = binary_accuracy(logits.squeeze(), self.labels)
+
+		wandb_out = {"val_loss": loss, "val_acc":acc}
+		self.log("val_loss", loss, prog_bar=True)
+		self.log("val_acc", acc, prog_bar=True)
+
+		self.val_acc += float(acc)
+		self.val_loss += float(loss)
+		
+		if self.args.use_wandb and self.trainer.global_rank==0:
+			wandb.log(wandb_out)
+
+		return
+	
+	def on_validation_epoch_end(self):
+
+		#pdb.set_trace()
+
+		val_acc_avg = self.val_acc/self.trainer.num_val_batches[0]
+		val_loss_avg = self.val_loss/self.trainer.num_val_batches[0]
+
+		print('\n Val acc after ', self.current_epoch, ' epochs : ',\
+						val_acc_avg, '  loss : ',val_loss_avg, file=self.args.log_file)
+		
+		wandb_out = {"val_loss_global": val_acc_avg, "val_acc_gloabl":val_loss_avg}
+		
+		if self.args.use_wandb and self.trainer.global_rank==0:
+			wandb.log(wandb_out)
+		
+		self.val_acc = 0.0
 	
 	def save(self, epoch):
 		print('\n Saving at epoch ', epoch, file=self.args.log_file)
 		torch.save({
-					'model': self.model.state_dict(),
+					'model': self.reward_model.state_dict(),
 					'optimizer': self.optimizer.state_dict(),
 					'lr_scheduler': self.lr_scheduler.state_dict(),
 					'epoch': epoch,
@@ -85,15 +144,15 @@ class local_trainer(pl.LightningModule):
 				}, os.path.join(self.args.output_dir, f'checkpoint{epoch:02}.pth'))
 	
 	def resume(self, load_path=''):
-		print('\n Resuming model for task ', self.task_id, ' from : ',load_path, file=self.args.log_file)
+		print('\n Resuming model from : ',load_path, file=self.args.log_file)
 		if load_path:
 			checkpoint = torch.load(load_path, map_location='cpu')
-			missing_keys, unexpected_keys = self.model.load_state_dict(checkpoint['model'], strict=False)
+			missing_keys, unexpected_keys = self.reward_model.load_state_dict(checkpoint['model'], strict=False)
 	
 	
 	def configure_optimizers(self):
 
-		self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr,
+		self.optimizer = torch.optim.AdamW(self.reward_model.parameters(), lr=self.lr,
 								weight_decay=self.weight_decay)
 
 		self.lr_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, self.args.lr_drop)
@@ -107,9 +166,8 @@ class local_trainer(pl.LightningModule):
 		return self.val_dataloader
 
 class Evaluator():
-	def __init__(self, processor, test_dataset, test_dataloader, coco_evaluator, 
-			  task_label2name, args, local_trainer=None, PREV_INTRODUCED_CLS=0, 
-			  CUR_INTRODUCED_CLS=20, local_eval=0, task_id=0, task_name=None):
+	def __init__(self, processor, test_dataset, test_dataloader, 
+			  args, local_trainer=None, local_eval=0):
 		
 		self.processor = processor
 		self.local_trainer = local_trainer
