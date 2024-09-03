@@ -8,13 +8,19 @@ import torch.nn as nn
 from copy import deepcopy
 import pytorch_lightning as pl
 import torch.nn.functional as F
-from src.bert import BertModel
+from src.bert import BertModel, BertReward
+from transformers.models.bert.configuration_bert import BertConfig
 
 class local_trainer(pl.LightningModule):
 	def __init__(self, train_loader, val_loader, test_dataset, args, eval_mode=False):
 		super().__init__()
 
-		self.model = BertModel()
+		self.config = BertConfig()
+
+		self.config.vocab = 100
+		self.config.num_labels = 1 # regression output
+
+		self.reward_model = BertReward(self.config)
 
 		self.lr = args.lr
 		self.weight_decay = args.weight_decay
@@ -31,33 +37,14 @@ class local_trainer(pl.LightningModule):
 		return outputs
 	
 	def common_step(self, batch, batch_idx, return_outputs=None):
-		pixel_values = batch["pixel_values"].to(self.device)
-		pixel_mask = batch["pixel_mask"].to(self.device)
-		labels = [{k: v.to(self.device) for k, v in t.items()} for t in batch["labels"]]
-		orig_target_sizes = torch.stack([target["orig_size"] for target in labels], dim=0)
-		
-		outputs = self.model(pixel_values=pixel_values, pixel_mask=pixel_mask, labels=labels,  train=False, task_id=self.task_id)
-		
-		loss = outputs.loss
-		loss_dict = outputs.loss_dict
 
-		if self.args.local_query:
-			loss_dict['query_loss'] = query_loss
+		feat = batch['query_document_embedding'].to(self.device)
+		avg_click = torch.clamp(batch['click'].sum(dim=1)/3.0, max=1.0).to(self.device)
+		pos_idx = batch['position']
 
-			loss += self.args.lambda_query * query_loss
+		out = self.reward_model(inputs_embeds=feat, position_ids=pos_idx, labels=avg_click)
 
-		if return_outputs:
-
-			if self.args.mask_gradients:
-				outputs.logits[:,:, self.invalid_cls_logits] = -10e10
-				outputs.logits = outputs.logits[:,:,:self.args.n_classes-1] #removing background class
-		
-			# TODO: fix  processor.post_process_object_detection()
-			results = self.processor.post_process(outputs, target_sizes=orig_target_sizes) # convert outputs to COCO api
-			res = {target['image_id'].item(): output for target, output in zip(labels, results)}
-			res = self.evaluator.prepare_for_coco_detection(res)
-		
-			return loss, loss_dict, res
+		pdb.set_trace()
 
 		return loss, loss_dict
 	
@@ -105,38 +92,8 @@ class local_trainer(pl.LightningModule):
 	
 	
 	def configure_optimizers(self):
-		new_params = self.args.new_params.split(',')
 
-		if self.args.repo_name:
-			param_dicts = [
-				{"params": [p for n, p in self.named_parameters()
-					if self.match_name_keywords(n, new_params) and p.requires_grad],
-					"lr":self.args.lr,
-					},
-				{
-					"params": [p for n, p in self.named_parameters() if not self.match_name_keywords(n, new_params) and p.requires_grad],
-					"lr": self.args.lr_old,
-				},
-			]
-		else:
-			param_dicts = [
-			{
-				"params":
-					[p for n, p in self.named_parameters()
-					if not self.match_name_keywords(n, self.args.lr_backbone_names) and not self.match_name_keywords(n, self.args.lr_linear_proj_names) and p.requires_grad],
-				"lr": self.args.lr,
-			},
-			{
-				"params": [p for n, p in self.named_parameters() if self.match_name_keywords(n, self.args.lr_backbone_names) and p.requires_grad],
-				"lr": self.args.lr_backbone,
-			},
-			{
-				"params": [p for n, p in self.named_parameters() if self.match_name_keywords(n, self.args.lr_linear_proj_names) and p.requires_grad],
-				"lr": self.args.lr * self.args.lr_linear_proj_mult,
-			}
-			]
-
-		self.optimizer = torch.optim.AdamW(param_dicts, lr=self.lr,
+		self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr,
 								weight_decay=self.weight_decay)
 
 		self.lr_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, self.args.lr_drop)
