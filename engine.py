@@ -38,9 +38,9 @@ class local_trainer(pl.LightningModule):
 
 		#self.automatic_optimization = False
 	
-	# def forward(self, pixel_values, pixel_mask):
-	# 	outputs = self.model(pixel_values=pixel_values, pixel_mask=pixel_mask)
-	# 	return outputs
+		# def forward(self, pixel_values, pixel_mask):
+		# 	outputs = self.model(pixel_values=pixel_values, pixel_mask=pixel_mask)
+		# 	return outputs
 	
 	def common_step(self, batch, batch_idx):
 
@@ -48,19 +48,17 @@ class local_trainer(pl.LightningModule):
 		avg_click = torch.clamp(batch['click'].sum(dim=1), max=1.0).to(self.device)
 		pos_idx = batch['position']
 
-		self.labels = avg_click
-
 		out = self.reward_model(inputs_embeds=feat, position_ids=pos_idx, labels=avg_click)
 
-		return out
+		return out, avg_click
 	
 	def training_step(self, batch, batch_idx): # automatic training schedule
 		
-		out_dict = self.common_step(batch, batch_idx)
+		out_dict, labels = self.common_step(batch, batch_idx)
 		loss = out_dict['loss']
 		logits = out_dict['logits']
 
-		acc = binary_accuracy(logits.squeeze(), self.labels)
+		acc = binary_accuracy(logits.squeeze(), labels)
 
 		wandb_out = {"tr_loss": loss, "tr_acc":acc}
 		self.log("tr_loss", loss, prog_bar=True)
@@ -82,27 +80,30 @@ class local_trainer(pl.LightningModule):
 		tr_acc_avg = self.tr_acc/self.trainer.num_training_batches
 		tr_loss_avg = self.tr_loss/self.trainer.num_training_batches
 
-		print('\n Train acc after ', self.current_epoch, ' epochs : ',\
-						tr_acc_avg, '  loss : ',tr_loss_avg, file=self.args.log_file)
-		
 		self.lr_scheduler.step()
 		if self.current_epoch and self.current_epoch%self.args.save_epochs == 0:
 			self.save(self.current_epoch)
+			
+		if self.trainer.global_rank==0:
+			print('\n Train acc after ', self.current_epoch, ' epochs : ',\
+							tr_acc_avg, '  loss : ',tr_loss_avg, file=self.args.log_file)
+			
 
-		wandb_out = {"tr_loss_global": tr_acc_avg, "tr_acc_gloabl":tr_loss_avg}
-		
-		if self.args.use_wandb and self.trainer.global_rank==0:
-			wandb.log(wandb_out)
+			wandb_out = {"tr_loss_global": tr_acc_avg, "tr_acc_global":tr_loss_avg}
+			
+			if self.args.use_wandb:
+				wandb.log(wandb_out)
 		
 		self.tr_acc = 0.0
+		self.tr_loss = 0.0
 
 	def validation_step(self, batch, batch_idx):
 		
-		out_dict = self.common_step(batch, batch_idx)
+		out_dict, labels = self.common_step(batch, batch_idx)
 		loss = out_dict['loss']
 		logits = out_dict['logits']
 
-		acc = binary_accuracy(logits.squeeze(), self.labels)
+		acc = binary_accuracy(logits.squeeze(), labels)
 
 		wandb_out = {"val_loss": loss, "val_acc":acc}
 		self.log("val_loss", loss, prog_bar=True)
@@ -123,15 +124,17 @@ class local_trainer(pl.LightningModule):
 		val_acc_avg = self.val_acc/self.trainer.num_val_batches[0]
 		val_loss_avg = self.val_loss/self.trainer.num_val_batches[0]
 
-		print('\n Val acc after ', self.current_epoch, ' epochs : ',\
-						val_acc_avg, '  loss : ',val_loss_avg, file=self.args.log_file)
-		
-		wandb_out = {"val_loss_global": val_acc_avg, "val_acc_gloabl":val_loss_avg}
-		
-		if self.args.use_wandb and self.trainer.global_rank==0:
-			wandb.log(wandb_out)
+		if self.trainer.global_rank==0:
+			print('\n Val acc after ', self.current_epoch, ' epochs : ',\
+							val_acc_avg, '  loss : ',val_loss_avg, file=self.args.log_file)
+			
+			wandb_out = {"val_loss_global": val_acc_avg, "val_acc_global":val_loss_avg}
+			
+			if self.args.use_wandb:
+				wandb.log(wandb_out)
 		
 		self.val_acc = 0.0
+		self.val_loss = 0.0
 	
 	def save(self, epoch):
 		print('\n Saving at epoch ', epoch, file=self.args.log_file)

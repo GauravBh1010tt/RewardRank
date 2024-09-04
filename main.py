@@ -31,7 +31,7 @@ def get_args_parser():
     #parser.add_argument('--repo_name', default="SenseTime/deformable-detr", type=str)
    
     parser.add_argument('--lr_drop', default=40, type=int)
-    parser.add_argument('--save_epochs', default=1, type=int)
+    parser.add_argument('--save_epochs', default=2, type=int)
     parser.add_argument('--lr_drop_epochs', default=None, type=int, nargs='+')
     parser.add_argument('--clip_max_norm', default=0.1, type=float,
                         help='gradient clipping max norm')
@@ -45,6 +45,8 @@ def get_args_parser():
                         help='path where to save, empty for no saving')
     parser.add_argument('--output_folder', default='demo',
                         help='path where to save, empty for no saving')
+    parser.add_argument('--load_path', default='',
+                        help='path where to load model')
     parser.add_argument('--device', default='cuda',
                         help='device to use for training / testing')
     parser.add_argument('--seed', default=42, type=int)
@@ -72,7 +74,7 @@ def main(args):
 
     current_rank = get_rank()
 
-    if current_rank>0 or args.debug:
+    if current_rank>0 or args.debug or args.eval:
         print ('\n shutting wandb for multiple GPUs. Will only run for rank:0 process. \n')
         os.environ["WANDB_MODE"] = "offline"
 
@@ -120,7 +122,12 @@ def main(args):
     trainer = local_trainer(train_loader=train_dataloader,val_loader=test_dataloader,
                             test_dataset=test_dataset,args=args)
         
-    pyl_trainer.fit(trainer, train_dataloader, test_dataloader)
+    if args.eval:
+        print('\n\n Evaluating ... \n\n')
+        trainer.resume(load_path=args.load_path)
+        pyl_trainer.validate(trainer,test_dataloader)
+    else:
+        pyl_trainer.fit(trainer, train_dataloader, test_dataloader)
 
     #############################################################################################################
     args.log_file.close()
