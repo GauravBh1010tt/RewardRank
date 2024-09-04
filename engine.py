@@ -137,7 +137,9 @@ class local_trainer(pl.LightningModule):
 		self.val_loss = 0.0
 	
 	def save(self, epoch):
-		print('\n Saving at epoch ', epoch, file=self.args.log_file)
+		if self.trainer.global_rank==0:
+			print('\n Saving at epoch ', epoch, file=self.args.log_file)
+
 		torch.save({
 					'model': self.reward_model.state_dict(),
 					'optimizer': self.optimizer.state_dict(),
@@ -147,7 +149,10 @@ class local_trainer(pl.LightningModule):
 				}, os.path.join(self.args.output_dir, f'checkpoint{epoch:02}.pth'))
 	
 	def resume(self, load_path=''):
+		
+		#if self.trainer.global_rank==0:
 		print('\n Resuming model from : ',load_path, file=self.args.log_file)
+		
 		if load_path:
 			checkpoint = torch.load(load_path, map_location='cpu')
 			missing_keys, unexpected_keys = self.reward_model.load_state_dict(checkpoint['model'], strict=False)

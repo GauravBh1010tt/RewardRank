@@ -68,7 +68,10 @@ def main(args):
     seed = args.seed
     seed_everything(seed, workers=True)
 
-    args.log_file = open(args.output_dir+'/out.log','a')
+    if args.eval:
+        args.log_file = open(args.output_dir+'/out_eval.log','a')
+    else:
+        args.log_file = open(args.output_dir+'/out.log','a')
 
     print('Logging: args ', args, file=args.log_file)
 
