@@ -12,7 +12,7 @@ import torch.nn.functional as F
 from src.bert import BertModel, BertReward
 from transformers.models.bert.configuration_bert import BertConfig
 
-from src.utils import binary_accuracy
+from src.utils import binary_accuracy, min_max_normalize, z_score_normalize
 
 class local_trainer(pl.LightningModule):
 	def __init__(self, train_loader, val_loader, test_dataset, args, eval_mode=False):
@@ -23,6 +23,11 @@ class local_trainer(pl.LightningModule):
 		self.config.vocab = 100
 		self.config.num_labels = 1 # regression output
 		self.config.problem_type = args.problem_type
+		self.config.max_position_embeddings = 50
+
+		if args.use_doc_feat:
+			# self.config.doc_feat_len=0
+			self.config.hidden_size+=12
 
 		self.reward_model = BertReward(self.config)
 
@@ -36,7 +41,7 @@ class local_trainer(pl.LightningModule):
 		self.tr_acc, self.tr_loss = 0.0, 0.0
 		self.val_acc, self.val_loss = 0.0, 0.0
 
-		#self.automatic_optimization = False
+		# self.automatic_optimization = False
 	
 		# def forward(self, pixel_values, pixel_mask):
 		# 	outputs = self.model(pixel_values=pixel_values, pixel_mask=pixel_mask)
@@ -45,12 +50,27 @@ class local_trainer(pl.LightningModule):
 	def common_step(self, batch, batch_idx):
 
 		feat = batch['query_document_embedding'].to(self.device)
-		avg_click = torch.clamp(batch['click'].sum(dim=1), max=1.0).to(self.device)
+		avg_click = torch.clamp(batch['click'].sum(dim=1), max=1.0).to(self.device) #TODO: better way to create labels
 		pos_idx = batch['position']
 
+		if self.args.use_doc_feat:
+			doc_feats = torch.cat([
+								batch['bm25'].unsqueeze(2), batch['tf'].unsqueeze(2),
+								batch['idf'].unsqueeze(2),batch['tf_idf'].unsqueeze(2),
+						 		batch['ql_jelinek_mercer_short'].unsqueeze(2),
+								batch['ql_jelinek_mercer_long'].unsqueeze(2), 
+								batch['ql_dirichlet'].unsqueeze(2)],
+							dim=2)
+			#pdb.set_trace()
+			doc_feats = min_max_normalize(doc_feats)
+			doc_feats = torch.cat([doc_feats, torch.zeros((batch['bm25'].shape[0],batch['bm25'].shape[1],5)).to(self.device)],dim=2)
+			
+			feat = torch.cat([feat,doc_feats], dim=2)
+		
+		#pdb.set_trace()
 		out = self.reward_model(inputs_embeds=feat, position_ids=pos_idx, labels=avg_click)
-
 		return out, avg_click
+	
 	
 	def training_step(self, batch, batch_idx): # automatic training schedule
 		

@@ -56,6 +56,7 @@ def get_args_parser():
     parser.add_argument('--eval', action='store_true')
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--use_wandb', action='store_true')
+    parser.add_argument('--use_doc_feat', action='store_true')
     parser.add_argument('--num_workers', default=2, type=int)
     parser.add_argument('--log_file', default=None, type=str)
     parser.add_argument('--wandb_project_name', default='ranking', type=str)
