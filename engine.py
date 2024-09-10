@@ -26,7 +26,7 @@ class local_trainer(pl.LightningModule):
 		self.config.max_position_embeddings = 50
 
 		if args.use_doc_feat:
-			# self.config.doc_feat_len=0
+		# 	# self.config.doc_feat_len=0
 			self.config.hidden_size+=12
 
 		self.reward_model = BertReward(self.config)
@@ -40,6 +40,8 @@ class local_trainer(pl.LightningModule):
 		self.eval_mode = eval_mode
 		self.tr_acc, self.tr_loss = 0.0, 0.0
 		self.val_acc, self.val_loss = 0.0, 0.0
+		self.cls_token_save = []
+		self.cls_label_save = []
 
 		# self.automatic_optimization = False
 	
@@ -68,7 +70,7 @@ class local_trainer(pl.LightningModule):
 			feat = torch.cat([feat,doc_feats], dim=2)
 		
 		#pdb.set_trace()
-		out = self.reward_model(inputs_embeds=feat, position_ids=pos_idx, labels=avg_click)
+		out = self.reward_model(inputs_embeds=feat, position_ids=pos_idx, labels=avg_click, doc_feats=doc_feats)
 		return out, avg_click
 	
 	
@@ -122,6 +124,7 @@ class local_trainer(pl.LightningModule):
 		out_dict, labels = self.common_step(batch, batch_idx)
 		loss = out_dict['loss']
 		logits = out_dict['logits']
+		cls_token = out_dict['cls_token']
 
 		acc = binary_accuracy(logits.squeeze(), labels)
 
@@ -132,8 +135,13 @@ class local_trainer(pl.LightningModule):
 		self.val_acc += float(acc)
 		self.val_loss += float(loss)
 		
-		if self.args.use_wandb and self.trainer.global_rank==0:
-			wandb.log(wandb_out)
+		if self.trainer.global_rank==0:
+			if self.args.use_wandb:
+				wandb.log(wandb_out)
+				#pdb.set_trace()
+		if self.args.save_cls and batch_idx < self.trainer.num_val_batches[0] - 1:
+			self.cls_token_save.append(cls_token.detach().cpu().squeeze())
+			self.cls_label_save.append(labels.detach().cpu().squeeze())
 
 		return
 	
@@ -152,6 +160,12 @@ class local_trainer(pl.LightningModule):
 			
 			if self.args.use_wandb:
 				wandb.log(wandb_out)
+
+			#pdb.set_trace()
+
+		if self.args.save_cls:
+			torch.save(torch.stack(self.cls_token_save),os.path.join(self.args.output_dir,'saved_cls'))
+			torch.save(torch.stack(self.cls_label_save),os.path.join(self.args.output_dir,'saved_label'))
 		
 		self.val_acc = 0.0
 		self.val_loss = 0.0

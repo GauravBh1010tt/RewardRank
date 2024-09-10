@@ -422,6 +422,7 @@ class BertReward(BertPreTrainedModel):
             config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
         )
         self.dropout = nn.Dropout(classifier_dropout)
+        #self.doc_feat_transform = nn.Linear(config.hidden_size, config.num_labels)
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
 
         # Initialize weights and apply final processing
@@ -434,6 +435,7 @@ class BertReward(BertPreTrainedModel):
         token_type_ids: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.Tensor] = None,
         head_mask: Optional[torch.Tensor] = None,
+        doc_feats: Optional[torch.Tensor] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
         labels: Optional[torch.Tensor] = None,
         output_attentions: Optional[bool] = None,
@@ -462,6 +464,8 @@ class BertReward(BertPreTrainedModel):
 
         pooled_output = outputs[1]
 
+        #pdb.set_trace()
+
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
 
@@ -487,10 +491,20 @@ class BertReward(BertPreTrainedModel):
         if not return_dict:
             output = (logits,) + outputs[2:]
             return ((loss,) + output) if loss is not None else output
+        
+        out_dict={
+            'loss':loss,
+            'logits':logits,
+            'hidden_states':outputs.hidden_states,
+            'attentions':outputs.attentions,
+            'cls_token':pooled_output,
+        }
 
-        return SequenceClassifierOutput(
-            loss=loss,
-            logits=logits,
-            hidden_states=outputs.hidden_states,
-            attentions=outputs.attentions,
-        )
+        return out_dict
+        
+        # return SequenceClassifierOutput(
+        #     loss=loss,
+        #     logits=logits,
+        #     hidden_states=outputs.hidden_states,
+        #     attentions=outputs.attentions,
+        # )
