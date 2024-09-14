@@ -1,0 +1,3 @@
+[submodule "bbm"]
+	path = bbm
+	url = https://github.com/philipphager/baidu-bert-model.git
