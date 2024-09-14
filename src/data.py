@@ -1,32 +1,42 @@
 import enum
 from collections import defaultdict
 from functools import lru_cache
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 
 import mmh3
 import torch
+import pdb
 import numpy as np
 from datasets import Dataset
 from sklearn.model_selection import train_test_split
 
+from bbm.src.const import (
+    SPECIAL_TOKENS,
+    SEGMENT_TYPES,
+    MAX_SEQUENCE_LENGTH,
+)
+
 COLUMNS = {
-    #"query_id": {"padded": False, "dtype": str},
-    "query_document_embedding": {"padded": True, "dtype": torch.float, "type": "bert"},
+    "query_id": {"padded": False, "dtype": str},
+    "query_document_embedding": {"padded": True, "dtype": float, "type": "bert"},
     "position": {"padded": True, "dtype": int},
     "mask": {"padded": True, "dtype": bool},
     "n": {"padded": False, "dtype": int},
     "click": {"padded": True, "dtype": int},
+    "tokens": {"padded": True, "dtype": int},
+    "attention_mask": {"attention_mask": True, "dtype": bool},
+    "token_types": {"token_types": True, "dtype": int},
     "label": {"padded": True, "dtype": int},
     "frequency_bucket": {"padded": False, "dtype": int},
-    "bm25": {"padded": True, "dtype": torch.float, "type": "ltr"},
-    "bm25_title": {"padded": True, "dtype": torch.float, "type": "ltr"},
-    "bm25_abstract": {"padded": True, "dtype": torch.float, "type": "ltr"},
-    "tf_idf": {"padded": True, "dtype": torch.float, "type": "ltr"},
-    "tf": {"padded": True, "dtype": torch.float, "type": "ltr"},
-    "idf": {"padded": True, "dtype": torch.float, "type": "ltr"},
-    "ql_jelinek_mercer_short": {"padded": True, "dtype": torch.float, "type": "ltr"},
-    "ql_jelinek_mercer_long": {"padded": True, "dtype": torch.float, "type": "ltr"},
-    "ql_dirichlet": {"padded": True, "dtype": torch.float, "type": "ltr"},
+    "bm25": {"padded": True, "dtype": float, "type": "ltr"},
+    "bm25_title": {"padded": True, "dtype": float, "type": "ltr"},
+    "bm25_abstract": {"padded": True, "dtype": float, "type": "ltr"},
+    "tf_idf": {"padded": True, "dtype": float, "type": "ltr"},
+    "tf": {"padded": True, "dtype": float, "type": "ltr"},
+    "idf": {"padded": True, "dtype": float, "type": "ltr"},
+    "ql_jelinek_mercer_short": {"padded": True, "dtype": float, "type": "ltr"},
+    "ql_jelinek_mercer_long": {"padded": True, "dtype": float, "type": "ltr"},
+    "ql_dirichlet": {"padded": True, "dtype": float, "type": "ltr"},
     "document_length": {"padded": True, "dtype": int, "type": "ltr"},
     "title_length": {"padded": True, "dtype": int, "type": "ltr"},
     "abstract_length": {"padded": True, "dtype": int, "type": "ltr"},
@@ -54,12 +64,31 @@ def collate_fn(samples: List[Dict[str, np.ndarray]]):
     batch = defaultdict(lambda: [])
     max_n = int(max([sample["n"] for sample in samples]))
     
+    #pdb.set_trace()
+
     for sample in samples:
+        
+        all_tokens, all_token_types, all_attention_mask = [],[],[]
+        for k in range(sample['n']):
+            tokens, token_types, attention_mask = format_input(
+                list(sample["query"]),
+                list(sample["title"][k]),
+                list(sample["abstract"][k]),
+            )
+            all_tokens.append(tokens)
+            all_token_types.append(token_types)
+            all_attention_mask.append(attention_mask)
+
+        batch['tokens'].append(pad(all_tokens,max_n))
+        batch['token_types'].append(pad(all_token_types,max_n))
+        batch['attention_mask'].append(pad(all_attention_mask,max_n))
+
         for column, x in sample.items():
             if column in COLUMNS:
                 #try:
                 x = pad(x, max_n) if COLUMNS[column]["padded"] else x
                 batch[column].append(x)
+                
                 # except:
                 #     import pdb; pdb.set_trace()
 
@@ -68,8 +97,79 @@ def collate_fn(samples: List[Dict[str, np.ndarray]]):
 
     #import pdb; pdb.set_trace()
     return {
-        column: torch.tensor(features, dtype=COLUMNS[column]["dtype"])
+        column: np.array(features, dtype=COLUMNS[column]["dtype"])
         for column, features in batch.items()
+    }
+
+
+def format_input(
+    query: List[int],
+    title: List[int],
+    abstract: List[int],
+    max_tokens: int = MAX_SEQUENCE_LENGTH,
+    special_tokens: Dict[str, int] = SPECIAL_TOKENS,
+    segment_types: Dict[str, int] = SEGMENT_TYPES,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Format BERT model input as:
+    [CLS] + query + [SEP] + title + [SEP] + abstract + [SEP] + [PAD]
+    """
+    CLS = special_tokens["CLS"]
+    SEP = special_tokens["SEP"]
+    PAD = special_tokens["PAD"]
+
+    query_tokens = [CLS] + query + [SEP]
+    query_token_types = [segment_types["QUERY"]] * len(query_tokens)
+
+    text_tokens = title + [SEP] + abstract + [SEP]
+    text_token_types = [segment_types["TEXT"]] * len(text_tokens)
+
+    tokens = query_tokens + text_tokens
+    token_types = query_token_types + text_token_types
+
+    padding = max(max_tokens - len(tokens), 0)
+    tokens = tokens[:max_tokens] + padding * [PAD]
+    token_types = token_types[:max_tokens] + padding * [segment_types["PAD"]]
+
+    tokens = np.array(tokens, dtype=int)
+    token_types = np.array(token_types, dtype=int)
+    attention_mask = tokens > PAD
+
+    return tokens, token_types, attention_mask
+
+
+def collate_click_fn(
+    batch: List[Dict],
+    max_tokens: int = MAX_SEQUENCE_LENGTH,
+    special_tokens: Dict[str, int] = SPECIAL_TOKENS,
+    segment_types: Dict[str, int] = SEGMENT_TYPES,
+) -> Dict:
+    collated = defaultdict(lambda: [])
+    for sample in batch:
+        for k in range(sample["n"]):
+            tokens, token_types, attention_mask = format_input(
+                list(sample["query"]),
+                list(sample["title"][k]),
+                list(sample["abstract"][k]),
+                max_tokens,
+                special_tokens,
+                segment_types,
+            )
+
+            collated["query_id"].append(sample["query_id"])
+            collated["tokens"].append(tokens)
+            collated["token_types"].append(np.asarray(token_types))
+            collated["attention_mask"].append(attention_mask)
+            collated["positions"].append(sample["position"][k])
+            collated["click"].append(sample["click"][k])
+
+    return {
+        "query_id": np.asarray(collated["query_id"]),
+        "tokens": np.stack(collated["tokens"], axis=0),
+        "attention_mask": np.stack(collated["attention_mask"], axis=0),
+        "token_types": np.stack(collated["token_types"], axis=0),
+        "clicks": np.asarray(collated["click"]),
+        "positions": np.asarray(collated["positions"]),
     }
 
 

@@ -1,10 +1,10 @@
-model=dfeat_un
+model=demo
 output_path=/home/ggbhatt/workspace/cf_ranking/outputs/
 load_path="${output_path}${model}/checkpoint04.pth"
 problem_type="classification"
 debug=0
-train=0
-eval=1
+train=1
+eval=0
 lr=2e-5
 wt_decay=1e-2
 epochs=40
@@ -30,7 +30,7 @@ echo "Training..."
 CUDA_VISIBLE_DEVICES=4,5,6,7 python main.py \
     --batch_size=256 --output_path=$output_path --output_folder=$model --problem_type=${problem_type} \
     --save_epochs=5 --lr=$lr --weight_decay=$wt_decay --epochs=$epochs --lr_drop=$lr_drop \
-    --use_doc_feat
+    --use_doc_feat --batch_size=16
 fi
 
 if [[ $eval -gt 0 ]]

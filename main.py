@@ -27,8 +27,11 @@ def get_args_parser():
     parser.add_argument('--weight_decay', default=1e-4, type=float)
     parser.add_argument('--epochs', default=51, type=int)
     parser.add_argument('--eval_epochs', default=1, type=int)
+    parser.add_argument('--use_model_preds', default=1, type=int)
     parser.add_argument('--print_freq', default=500, type=int)
-    #parser.add_argument('--repo_name', default="SenseTime/deformable-detr", type=str)
+    parser.add_argument('--max_positions_PE', default=50, type=int)
+    parser.add_argument('--repo_name', default="philipphager/baidu-ultr_baidu-mlm-ctr", choices=['philipphager/baidu-ultr_baidu-mlm-ctr',
+                                                                                     'philipphager/baidu-ultr_uva-mlm-ctr'])
    
     parser.add_argument('--lr_drop', default=40, type=int)
     parser.add_argument('--save_epochs', default=2, type=int)
@@ -99,12 +102,12 @@ def main(args):
     #logger = TensorBoardLogger(save_dir=args.output_dir, version=1, name="lightning_logs")
     logger = CSVLogger(save_dir=args.output_dir, name="lightning_logs")
 
-    train_dataset = load_dataset("philipphager/baidu-ultr_baidu-mlm-ctr",name="clicks",
+    train_dataset = load_dataset(args.repo_name,name="clicks",
                             split="train", # ["train", "test"]
                             cache_dir="~/.cache/huggingface",
                             )
     
-    test_dataset = load_dataset("philipphager/baidu-ultr_baidu-mlm-ctr",name="clicks",
+    test_dataset = load_dataset(args.repo_name,name="clicks",
                             split="test", # ["train", "test"]
                             cache_dir="~/.cache/huggingface",
                             )
