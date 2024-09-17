@@ -2,17 +2,6 @@ import torch
 import torch.nn.functional as F
 
 def binary_accuracy(logits, labels, threshold=0.5):
-    """
-    Compute the accuracy for binary classification.
-
-    Args:
-        logits (torch.Tensor): Logits predicted by the model (before applying sigmoid).
-        labels (torch.Tensor): Ground truth binary labels (0 or 1).
-        threshold (float): Threshold to convert probabilities to binary predictions.
-
-    Returns:
-        float: Accuracy as a percentage.
-    """
     # Convert logits to probabilities
     probs = torch.sigmoid(logits)
     
@@ -43,7 +32,6 @@ def min_max_normalize(features):
     normalized_features = (features - min_vals) / (max_vals - min_vals + 1e-8)  # Add small value to avoid division by zero
     return normalized_features
 
-# Method 2: Z-Score Normalization for a 3D tensor
 def z_score_normalize(features):
     # Compute the mean and standard deviation across the document and feature dimensions
     mean_vals = features.mean(dim=(1, 2), keepdim=True)  # Shape: (batch_size, 1, 1)
@@ -51,3 +39,45 @@ def z_score_normalize(features):
     
     standardized_features = (features - mean_vals) / (std_vals + 1e-8)  # Add small value to avoid division by zero
     return standardized_features
+
+def sample_without_replacement_with_prob(delta, pos):
+    weights = torch.ones_like(pos)
+    remaining_idx = []
+
+    #print('pos', pos)
+
+    if delta*len(pos)<1:
+        idx = torch.multinomial(pos, len(pos), replacement=False)
+        return pos[idx]
+    
+    delta_sample_idx = torch.multinomial(pos,int(delta*len(pos)), replacement=False)
+    #print ('retaining', pos[delta_sample_idx])
+    weights[delta_sample_idx] = 0
+    #remaining_idx = len(pos) - int(delta*len(pos))
+
+    for i,j in enumerate(pos):
+        if j not in pos[delta_sample_idx]:
+            remaining_idx.append(i)
+
+    #print ('perturbing', remaining_idx)
+
+    d_pos = pos.clone()
+
+    for i in remaining_idx:
+        # Normalize weights to ensure they sum to 1
+        normalized_weights = weights / weights.sum()
+
+        # Sample one index based on normalized weights
+        if weights.sum() == 0:
+            return d_pos
+        
+        sampled_index = torch.multinomial(normalized_weights, 1).item()
+
+        #print (i, sampled_index, normalized_weights)
+
+        d_pos[sampled_index] = pos[i]
+
+        # Set the weight of the sampled index to 0 for the next iteration
+        weights[sampled_index] = 0
+
+    return d_pos

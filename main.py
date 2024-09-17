@@ -30,11 +30,12 @@ def get_args_parser():
     parser.add_argument('--use_model_preds', default=1, type=int)
     parser.add_argument('--print_freq', default=500, type=int)
     parser.add_argument('--max_positions_PE', default=50, type=int)
-    parser.add_argument('--repo_name', default="philipphager/baidu-ultr_baidu-mlm-ctr", choices=['philipphager/baidu-ultr_baidu-mlm-ctr',
+    parser.add_argument('--repo_name', default="philipphager/baidu-ultr_uva-mlm-ctr", choices=['philipphager/baidu-ultr_baidu-mlm-ctr',
                                                                                      'philipphager/baidu-ultr_uva-mlm-ctr'])
    
     parser.add_argument('--lr_drop', default=40, type=int)
     parser.add_argument('--save_epochs', default=2, type=int)
+    parser.add_argument('--delta_retain', default=0.5, type=float)
     parser.add_argument('--lr_drop_epochs', default=None, type=int, nargs='+')
     parser.add_argument('--clip_max_norm', default=0.1, type=float,
                         help='gradient clipping max norm')
@@ -42,6 +43,7 @@ def get_args_parser():
                         help="Number of GPUs available")
     
     parser.add_argument('--problem_type', default='classification', type=str)
+    parser.add_argument('--save_fname', default=None, type=str)
 
     # dataset parameters
     parser.add_argument('--output_path', default='/home/ggbhatt/workspace/cf_ranking/outputs/',
@@ -53,6 +55,7 @@ def get_args_parser():
     parser.add_argument('--device', default='cuda',
                         help='device to use for training / testing')
     parser.add_argument('--seed', default=42, type=int)
+    parser.add_argument('--n_viz', default=5, type=int)
     parser.add_argument('--resume', default=0, type=int)
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
@@ -82,7 +85,7 @@ def main(args):
 
     current_rank = get_rank()
 
-    if current_rank>0 or args.debug or args.eval:
+    if current_rank>0 or args.debug or args.eval or not args.use_wandb:
         print ('\n shutting wandb for multiple GPUs. Will only run for rank:0 process. \n')
         os.environ["WANDB_MODE"] = "offline"
 
@@ -131,7 +134,8 @@ def main(args):
                             test_dataset=test_dataset,args=args)
         
     if args.eval:
-        print('\n\n Evaluating ... \n\n')
+        print('\n\n Evaluating ... ', args.save_fname, '\n')
+        print('\n\n Evaluating ... ', args.save_fname, file=args.log_file)
         trainer.resume(load_path=args.load_path)
         pyl_trainer.validate(trainer,test_dataloader)
     else:

@@ -5,15 +5,17 @@ import tqdm
 import torch
 import wandb
 import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
 import torch.nn as nn
 from copy import deepcopy
 import pytorch_lightning as pl
 import torch.nn.functional as F
 from src.bert import BertModel, BertReward
 from transformers.models.bert.configuration_bert import BertConfig
-from bbm.src.model import CrossEncoder
+#from bbm.src.model import CrossEncoder
 
-from src.utils import binary_accuracy, min_max_normalize, z_score_normalize
+from src.utils import binary_accuracy, sample_without_replacement_with_prob as sample_idx
 
 class local_trainer(pl.LightningModule):
 	def __init__(self, train_loader, val_loader, test_dataset, args, eval_mode=False):
@@ -42,8 +44,13 @@ class local_trainer(pl.LightningModule):
 		self.eval_mode = eval_mode
 		self.tr_acc, self.tr_loss = 0.0, 0.0
 		self.val_acc, self.val_loss = 0.0, 0.0
-		self.cls_token_save = []
-		self.cls_label_save = []
+		# self.cls_token_save = []
+		# self.cls_label_save = []
+		# self.cls_prob_save = []
+
+		self.save_output = {'cls_token_save':[], 'cls_label_save':[], 'cls_prob_save':[]}
+
+		self.evaluator = Evaluator(args=self.args)
 
 		# self.automatic_optimization = False
 	
@@ -53,22 +60,29 @@ class local_trainer(pl.LightningModule):
 	
 	def common_step(self, batch, batch_idx):
 
-		feat = torch.tensor(batch['query_document_embedding']).to(self.device)
+		feat = torch.tensor(batch['query_document_embedding'], dtype=torch.float).to(self.device)
 		click = torch.tensor(batch['click']).to(self.device)
 		avg_click = torch.clamp(click.sum(dim=1), max=1.0).to(self.device) #TODO: better way to create labels
 		pos_idx = torch.tensor(batch['position']).to(self.device)
+
+		if self.args.eval or self.args.debug:
+			for i,j in enumerate(pos_idx):
+				n = batch['n'][i]
+				pos_idx[i][0:n] = sample_idx(delta=self.args.delta_retain, pos=pos_idx[i][0:n].float())
+
+		#pdb.set_trace()
 
 		doc_feats = None
 
 		if self.args.use_doc_feat:
 			doc_feats = torch.cat([
-								torch.tensor(batch['bm25']).to(self.device).unsqueeze(2), 
-								torch.tensor(batch['tf']).to(self.device).unsqueeze(2),
-								torch.tensor(batch['idf']).to(self.device).unsqueeze(2),
-								torch.tensor(batch['tf_idf']).to(self.device).unsqueeze(2),
-						 		torch.tensor(batch['ql_jelinek_mercer_short']).to(self.device).unsqueeze(2),
-								torch.tensor(batch['ql_jelinek_mercer_long']).to(self.device).unsqueeze(2), 
-								torch.tensor(batch['ql_dirichlet']).to(self.device).unsqueeze(2)],
+								torch.tensor(batch['bm25'], dtype=torch.float).to(self.device).unsqueeze(2), 
+								torch.tensor(batch['tf'], dtype=torch.float).to(self.device).unsqueeze(2),
+								torch.tensor(batch['idf'], dtype=torch.float).to(self.device).unsqueeze(2),
+								torch.tensor(batch['tf_idf'], dtype=torch.float).to(self.device).unsqueeze(2),
+						 		torch.tensor(batch['ql_jelinek_mercer_short'], dtype=torch.float).to(self.device).unsqueeze(2),
+								torch.tensor(batch['ql_jelinek_mercer_long'], dtype=torch.float).to(self.device).unsqueeze(2), 
+								torch.tensor(batch['ql_dirichlet'], dtype=torch.float).to(self.device).unsqueeze(2)],
 							dim=2)
 			
 			# pdb.set_trace()
@@ -148,9 +162,13 @@ class local_trainer(pl.LightningModule):
 
 		acc = binary_accuracy(logits.squeeze(), labels)
 
+		if self.args.debug:
+			if batch_idx>10:
+				return
+
 		wandb_out = {"val_loss": loss, "val_acc":acc}
-		self.log("val_loss", loss, prog_bar=True)
-		self.log("val_acc", acc, prog_bar=True)
+		self.log("val_loss", loss, batch_size=self.args.batch_size, prog_bar=True)
+		self.log("val_acc", acc, batch_size=self.args.batch_size, prog_bar=True)
 
 		self.val_acc += float(acc)
 		self.val_loss += float(loss)
@@ -160,8 +178,9 @@ class local_trainer(pl.LightningModule):
 				wandb.log(wandb_out)
 				#pdb.set_trace()
 		if self.args.save_cls and batch_idx < self.trainer.num_val_batches[0] - 1:
-			self.cls_token_save.append(cls_token.detach().cpu().squeeze())
-			self.cls_label_save.append(labels.detach().cpu().squeeze())
+			self.save_output['cls_token_save'].append(cls_token.detach().cpu().squeeze())
+			self.save_output['cls_label_save'].append(labels.detach().cpu().squeeze())
+			self.save_output['cls_prob_save'].append(torch.sigmoid(logits.squeeze()).detach().cpu())
 
 		return
 	
@@ -184,11 +203,14 @@ class local_trainer(pl.LightningModule):
 			#pdb.set_trace()
 
 		if self.args.save_cls:
-			torch.save(torch.stack(self.cls_token_save),os.path.join(self.args.output_dir,'saved_cls'))
-			torch.save(torch.stack(self.cls_label_save),os.path.join(self.args.output_dir,'saved_label'))
+			torch.save(torch.stack(self.save_output['cls_token_save']),os.path.join(self.args.output_dir,'saved_cls'))
+			torch.save(torch.stack(self.save_output['cls_label_save']),os.path.join(self.args.output_dir,'saved_label'))
 		
 		self.val_acc = 0.0
 		self.val_loss = 0.0
+	
+		if self.trainer.global_rank==0:
+			self.evaluator.plot_tsne(dim=self.config.hidden_size, saved_params=self.save_output)
 	
 	def save(self, epoch):
 		if self.trainer.global_rank==0:
@@ -228,16 +250,63 @@ class local_trainer(pl.LightningModule):
 		return self.val_dataloader
 
 class Evaluator():
-	def __init__(self, processor, test_dataset, test_dataloader, 
-			  args, local_trainer=None, local_eval=0):
+	def __init__(self,  args, local_trainer=None, local_eval=0):
 		
-		self.processor = processor
+		self.args = args
 		self.local_trainer = local_trainer
 		if local_trainer:
 			self.model = local_trainer.model
 		else:
 			self.model = None
 
+		self.tsne = TSNE()
+
+		if not self.args.save_fname:
+			self.args.save_fname='viz.jpg'
+		else:
+			self.args.save_fname += '_viz.jpg'
+
 	def evaluate(self):
 		args = self.args
 		model = self.model
+
+	def plot_tsne(self, dim=780, saved_path=None, saved_params=None, model=None):
+		
+		n_viz = self.args.n_viz
+
+		if saved_path:
+			a = torch.load(saved_path+model+'/saved_cls')
+			b = torch.load(saved_path+model+'/saved_label')
+		else:
+			cls_token = torch.stack(saved_params['cls_token_save'])
+			cls_label = torch.stack(saved_params['cls_label_save'])
+			cls_prob = torch.stack(saved_params['cls_prob_save'])
+
+		if self.args.debug:
+			pdb.set_trace()
+
+		print('\n Plotting TSNE .... \n')
+		embed = self.tsne.fit_transform(cls_token[0:n_viz].view(-1,dim))
+		cls_pred = (cls_prob >= 0.5).float()
+		cls_prob = (10*cls_prob).int()
+
+		title = ['cls_GT_labels','cls_pred_labels','cls_prob']
+		k=0
+		
+		fig, ax = plt.subplots(1, 3, figsize=(24,8), dpi=220)
+		scatter = []
+
+		for i,j in zip(ax,[cls_label,cls_pred,cls_prob]):
+			scatter.append(i.scatter(embed[:, 0], embed[:, 1], c=j[0:n_viz].view(-1), cmap='jet', s=50, alpha=0.7))
+
+			# Add a colorbar
+			plt.colorbar(scatter[-1])
+
+			i.set_title("t-SNE:: "+title[k])
+			#i.xlabel("t-SNE Component 1")
+			#i.ylabel("t-SNE Component 2")
+			i.plot()
+			i.set_aspect('equal')
+			k+=1
+
+		plt.savefig(os.path.join(self.args.output_dir,self.args.save_fname), bbox_inches='tight', pad_inches=0.1)
