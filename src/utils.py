@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 
-def binary_accuracy(logits, labels, threshold=0.5):
+def binary_accuracy(logits, labels, threshold=0.5, soft=False):
     # Convert logits to probabilities
     probs = torch.sigmoid(logits)
     
@@ -9,10 +9,12 @@ def binary_accuracy(logits, labels, threshold=0.5):
     preds = (probs >= threshold).float()
     
     # Compare predictions with the true labels
-    correct = (preds == labels).float()
-    
-    # Compute accuracy
-    accuracy = correct.sum() / len(labels)
+    if soft:
+        correct = torch.abs(preds - labels) < 0.5
+        accuracy = correct.float().mean()
+    else:
+        correct = (preds == labels).float()
+        accuracy = correct.sum() / len(labels)
     
     return accuracy.item() * 100
 
@@ -39,6 +41,10 @@ def z_score_normalize(features):
     
     standardized_features = (features - mean_vals) / (std_vals + 1e-8)  # Add small value to avoid division by zero
     return standardized_features
+
+def one_hot_binary_batch(batch):
+    return torch.stack([1 - batch, batch], dim=1).float()
+
 
 def sample_without_replacement_with_prob(delta, pos):
     weights = torch.ones_like(pos)
@@ -81,3 +87,31 @@ def sample_without_replacement_with_prob(delta, pos):
         weights[sampled_index] = 0
 
     return d_pos
+
+
+def sample_swap(pos, click=None, fn='swap_rand'):
+    
+    def swap(pos, idx, swap_idx=-1):    
+        temp = pos[idx].clone()
+        pos[idx] = pos[swap_idx]
+        pos[swap_idx] = temp
+        return pos
+    
+    if fn == 'swap_rand':
+        return swap(pos, idx=0)
+    
+    if not click:
+        return pos
+    
+    if click.sum()>0:
+        indices = (click == 1).nonzero()
+        idx = indices[0].item()
+        if fn=='swap_first_click_bot':
+            swap_idx = -1
+        elif fn=='swap_first_click_top':
+            swap_idx = 0
+        elif fn=='swap_first_click_rand':
+            swap_idx = torch.multinomial(pos, 1)
+        return swap(pos, idx, swap_idx)
+        
+    return pos

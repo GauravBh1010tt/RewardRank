@@ -21,10 +21,10 @@ from src.utils import get_rank
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Deformable DETR Detector', add_help=False)
-    parser.add_argument('--lr', default=2e-4, type=float)
-    parser.add_argument('--batch_size', default=512, type=int)
+    parser.add_argument('--lr', default=2e-5, type=float)
+    parser.add_argument('--batch_size', default=256, type=int)
     #parser.add_argument('--n_classes', default=80, type=int)
-    parser.add_argument('--weight_decay', default=1e-4, type=float)
+    parser.add_argument('--weight_decay', default=1e-2, type=float)
     parser.add_argument('--epochs', default=51, type=int)
     parser.add_argument('--eval_epochs', default=1, type=int)
     parser.add_argument('--use_model_preds', default=1, type=int)
@@ -32,10 +32,17 @@ def get_args_parser():
     parser.add_argument('--max_positions_PE', default=50, type=int)
     parser.add_argument('--repo_name', default="philipphager/baidu-ultr_uva-mlm-ctr", choices=['philipphager/baidu-ultr_baidu-mlm-ctr',
                                                                                      'philipphager/baidu-ultr_uva-mlm-ctr'])
+    
+    parser.add_argument('--sampling_type', default='rand_perturb', choices=['rand_perturb', 
+                                                                      'swap_rand', 'swap_first_click_bot', 
+                                                                      'swap_first_click_top', 'swap_first_click_rand'])
    
     parser.add_argument('--lr_drop', default=40, type=int)
     parser.add_argument('--save_epochs', default=2, type=int)
     parser.add_argument('--delta_retain', default=0.5, type=float)
+    parser.add_argument('--soft_labels', action='store_true')
+    parser.add_argument('--soft_base', default=0.9, type=float)
+    parser.add_argument('--soft_gain', default=0.02, type=float)
     parser.add_argument('--lr_drop_epochs', default=None, type=int, nargs='+')
     parser.add_argument('--clip_max_norm', default=0.1, type=float,
                         help='gradient clipping max norm')
@@ -86,7 +93,7 @@ def main(args):
     current_rank = get_rank()
 
     if current_rank>0 or args.debug or args.eval or not args.use_wandb:
-        print ('\n shutting wandb for multiple GPUs. Will only run for rank:0 process. \n')
+        #print ('\n shutting wandb for multiple GPUs. Will only run for rank:0 process. \n')
         os.environ["WANDB_MODE"] = "offline"
 
     if args.use_wandb:

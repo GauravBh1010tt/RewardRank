@@ -15,7 +15,7 @@ from src.bert import BertModel, BertReward
 from transformers.models.bert.configuration_bert import BertConfig
 #from bbm.src.model import CrossEncoder
 
-from src.utils import binary_accuracy, sample_without_replacement_with_prob as sample_idx
+from src.utils import binary_accuracy, sample_without_replacement_with_prob as sample_perturb, sample_swap
 
 class local_trainer(pl.LightningModule):
 	def __init__(self, train_loader, val_loader, test_dataset, args, eval_mode=False):
@@ -62,13 +62,24 @@ class local_trainer(pl.LightningModule):
 
 		feat = torch.tensor(batch['query_document_embedding'], dtype=torch.float).to(self.device)
 		click = torch.tensor(batch['click']).to(self.device)
-		avg_click = torch.clamp(click.sum(dim=1), max=1.0).to(self.device) #TODO: better way to create labels
+		
+		avg_click = torch.clamp(click.sum(dim=1), max=1.0).to(self.device) # hard labels
+
+		if self.args.soft_labels: # soft labels
+			gt_binary_labels = torch.clamp(click.sum(dim=1), max=1.0)
+			avg_click = (self.args.soft_base + click.sum(dim=1) * self.args.soft_gain)*gt_binary_labels
+			avg_click = torch.clamp(avg_click, max=1.0).to(self.device)
+
 		pos_idx = torch.tensor(batch['position']).to(self.device)
 
 		if self.args.eval or self.args.debug:
 			for i,j in enumerate(pos_idx):
 				n = batch['n'][i]
-				pos_idx[i][0:n] = sample_idx(delta=self.args.delta_retain, pos=pos_idx[i][0:n].float())
+	
+				if self.args.sampling_type == 'rand_perturb':
+					pos_idx[i][0:n] = sample_perturb(delta=self.args.delta_retain, pos=pos_idx[i][0:n].float())
+				else:
+					pos_idx[i][0:n] = sample_swap(pos=pos_idx[i][0:n].float(), click=click, fn=self.args.sampling_type)
 
 		#pdb.set_trace()
 
@@ -160,7 +171,7 @@ class local_trainer(pl.LightningModule):
 		logits = out_dict['logits']
 		cls_token = out_dict['cls_token']
 
-		acc = binary_accuracy(logits.squeeze(), labels)
+		acc = binary_accuracy(logits.squeeze(), labels, soft=self.args.soft_labels)
 
 		if self.args.debug:
 			if batch_idx>10:
@@ -209,7 +220,7 @@ class local_trainer(pl.LightningModule):
 		self.val_acc = 0.0
 		self.val_loss = 0.0
 	
-		if self.trainer.global_rank==0:
+		if self.trainer.global_rank==0 and self.args.n_viz:
 			self.evaluator.plot_tsne(dim=self.config.hidden_size, saved_params=self.save_output)
 	
 	def save(self, epoch):
@@ -259,7 +270,10 @@ class Evaluator():
 		else:
 			self.model = None
 
-		self.tsne = TSNE()
+		perplexity = 30.0
+		if args.debug:
+			perplexity = 5
+		self.tsne = TSNE(perplexity=perplexity)
 
 		if not self.args.save_fname:
 			self.args.save_fname='viz.jpg'
@@ -282,8 +296,8 @@ class Evaluator():
 			cls_label = torch.stack(saved_params['cls_label_save'])
 			cls_prob = torch.stack(saved_params['cls_prob_save'])
 
-		if self.args.debug:
-			pdb.set_trace()
+		# if self.args.debug:
+		# 	pdb.set_trace()
 
 		print('\n Plotting TSNE .... \n')
 		embed = self.tsne.fit_transform(cls_token[0:n_viz].view(-1,dim))

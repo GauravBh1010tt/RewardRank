@@ -9,16 +9,16 @@ from src.data import collate_fn
 from datasets import load_dataset
 from torch.utils.data import DataLoader
 from bbm.src.data import collate_click_fn
-from bbm.src.model import CrossEncoder
+from bbm.src.model import CrossEncoder, IPSCrossEncoder, PBMCrossEncoder
 from collections import defaultdict
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Deformable DETR Detector', add_help=False)
     parser.add_argument('--lr', default=2e-4, type=float)
     parser.add_argument('--batch_size', default=8, type=int)
-    parser.add_argument('--split', default='train', choices=['train','val'])
+    parser.add_argument('--split', default='train', choices=['train','test'])
     parser.add_argument('--part', default=0, type=int)
-    parser.add_argument('--out_dir', default='/home/ggbhatt/workspace/data/custom_click', type=str)
+    parser.add_argument('--out_dir', default='/home/ggbhatt/workspace/data/custom_click_new', type=str)
     parser.add_argument('--model', default='naive-pointwise', choices=['naive-pointwise', 
                                                                       'naive-listwise', 'pbm', 'dla', 
                                                                       'ips-pointwise', 'ips-listwise'])
@@ -29,7 +29,10 @@ def main(args):
 
     # fix the seed for reproducibility
     file_name = 'all_'+args.split+str(args.part)+'.feather'
-    output_file = os.path.join(args.out_dir,file_name)
+    
+    Path(os.path.join(args.out_dir, args.split)).mkdir(parents=True, exist_ok=True)
+
+    output_file = os.path.join(args.out_dir,args.split,file_name)
 
     if args.split == 'train':
         max_parts = 27796
@@ -49,13 +52,12 @@ def main(args):
         collate_fn=collate_fn,
     )
 
-    ultr_models = ['naive-pointwise', 'twotower', 'dla', 
-                                'ips-pointwise', 'ips-listwise']
-    map_mod = {'naive-pointwise':'click_n_point', 'twotower':'click_2tower_point', 'dla':'click_dla_list', 
-                                'ips-pointwise':'click_ips_point', 'ips-listwise':'click_ips_list'}
+    ultr_models = ['twotower', 'ips-pointwise']
+    map_mod = {'twotower':['examination_2tower', 'relevance_2tower', PBMCrossEncoder],
+               'ips-pointwise':['examination_ips', 'relevance_ips', IPSCrossEncoder]}
     models = {}
     for i in ultr_models:
-        models[i]= CrossEncoder.from_pretrained("philipphager/baidu-ultr_uva-bert_"+i)
+        models[i]= map_mod[i][-1].from_pretrained("philipphager/baidu-ultr_uva-bert_"+i)
 
     batch_out = defaultdict(lambda: [])
     for idx, batch in tqdm.tqdm(enumerate(click_loader)):
@@ -68,11 +70,15 @@ def main(args):
         row,col = batch['tokens'].shape[0], batch['tokens'].shape[1] 
         new_batch = {'tokens':batch['tokens'].reshape(row*col,128),
                 'attention_mask':batch['attention_mask'].reshape(row*col,128),
-                'token_types':batch['token_types'].reshape(row*col,128)}
+                'token_types':batch['token_types'].reshape(row*col,128),
+                'positions':batch['position'].reshape(row*col)}
+        
         for i in ultr_models:
             out_c = models[i](new_batch)
-            pred = np.array(out_c.click).reshape(row,col)
-            batch[map_mod[i]] = pred
+            examination = np.array(out_c.examination).reshape(row,col)
+            relevance = np.array(out_c.relevance).reshape(row,col)
+            batch[map_mod[i][0]] = examination
+            batch[map_mod[i][1]] = relevance
 
         for i,j in batch.items():
             batch_out[i].extend(j.tolist())
