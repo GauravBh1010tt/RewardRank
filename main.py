@@ -32,7 +32,7 @@ def get_args_parser():
     parser.add_argument('--max_positions_PE', default=50, type=int)
     parser.add_argument('--repo_name', default="philipphager/baidu-ultr_uva-mlm-ctr", choices=['philipphager/baidu-ultr_baidu-mlm-ctr',
                                                                                      'philipphager/baidu-ultr_uva-mlm-ctr'])
-    
+    parser.add_argument('--perturbation_sampling', action='store_true')
     parser.add_argument('--sampling_type', default='rand_perturb', choices=['rand_perturb', 
                                                                       'swap_rand', 'swap_first_click_bot', 
                                                                       'swap_first_click_top', 'swap_first_click_rand'])
@@ -41,6 +41,7 @@ def get_args_parser():
     parser.add_argument('--save_epochs', default=2, type=int)
     parser.add_argument('--delta_retain', default=0.5, type=float)
     parser.add_argument('--soft_labels', action='store_true')
+    
     parser.add_argument('--soft_base', default=0.9, type=float)
     parser.add_argument('--soft_gain', default=0.02, type=float)
     parser.add_argument('--lr_drop_epochs', default=None, type=int, nargs='+')
@@ -67,6 +68,7 @@ def get_args_parser():
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
     parser.add_argument('--eval', action='store_true')
+    parser.add_argument('--merge_imgs', action='store_true')
     parser.add_argument('--save_cls', action='store_true')
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--use_wandb', action='store_true')

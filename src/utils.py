@@ -45,6 +45,64 @@ def z_score_normalize(features):
 def one_hot_binary_batch(batch):
     return torch.stack([1 - batch, batch], dim=1).float()
 
+def distance_prob(prob1, prob2, distance_type='kl'):
+    
+    if distance_type == 'kl':
+        # Ensure non-zero values to avoid log(0) in KL divergence
+        prob1 = prob1 + 1e-8
+        prob2 = prob2 + 1e-8
+        kl_div = F.kl_div(prob1.log(), prob2, reduction='batchmean')  # KL Divergence
+        return kl_div
+    
+    elif distance_type == 'js':
+        # Jensen-Shannon Divergence (symmetrized version of KL)
+        prob1 = prob1 + 1e-8
+        prob2 = prob2 + 1e-8
+        m = 0.5 * (prob1 + prob2)
+        js_div = 0.5 * (F.kl_div(prob1.log(), m, reduction='batchmean') + F.kl_div(prob2.log(), m, reduction='batchmean'))
+        return js_div
+    
+    elif distance_type == 'l2':
+        # L2 Distance (Euclidean distance)
+        l2_dist = torch.norm(prob1 - prob2, p=2)
+        return l2_dist
+    
+    elif distance_type == 'l1':
+        # L1 Distance (Manhattan distance)
+        l1_dist = torch.norm(prob1 - prob2, p=1)
+        return l1_dist
+
+from PIL import Image
+
+def merge_images(image_paths, output_path, direction="horizontal"):
+
+    images = [Image.open(path) for path in image_paths]
+    widths, heights = zip(*(i.size for i in images))
+
+    if direction == "horizontal":
+        total_width = sum(widths)
+        max_height = max(heights)
+        new_image = Image.new('RGB', (total_width, max_height))
+
+        x_offset = 0
+        for image in images:
+            new_image.paste(image, (x_offset, 0))
+            x_offset += image.size[0]
+
+    elif direction == "vertical":
+        max_width = max(widths)
+        total_height = sum(heights)
+        new_image = Image.new('RGB', (max_width, total_height))
+
+        y_offset = 0
+        for image in images:
+            new_image.paste(image, (0, y_offset))
+            y_offset += image.size[1]
+
+    else:
+        raise ValueError("Invalid direction. Choose 'horizontal' or 'vertical'")
+
+    new_image.save(output_path)
 
 def sample_without_replacement_with_prob(delta, pos):
     weights = torch.ones_like(pos)
@@ -100,7 +158,7 @@ def sample_swap(pos, click=None, fn='swap_rand'):
     if fn == 'swap_rand':
         return swap(pos, idx=0)
     
-    if not click:
+    if click==None:
         return pos
     
     if click.sum()>0:

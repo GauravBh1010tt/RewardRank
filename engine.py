@@ -4,7 +4,9 @@ import pdb
 import tqdm
 import torch
 import wandb
+import glob
 import numpy as np
+from pathlib import Path
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 import torch.nn as nn
@@ -12,10 +14,12 @@ from copy import deepcopy
 import pytorch_lightning as pl
 import torch.nn.functional as F
 from src.bert import BertModel, BertReward
+from scipy.interpolate import make_interp_spline
+from scipy.ndimage.filters import gaussian_filter1d
 from transformers.models.bert.configuration_bert import BertConfig
 #from bbm.src.model import CrossEncoder
 
-from src.utils import binary_accuracy, sample_without_replacement_with_prob as sample_perturb, sample_swap
+from src.utils import binary_accuracy, sample_without_replacement_with_prob as sample_perturb, sample_swap, distance_prob, merge_images
 
 class local_trainer(pl.LightningModule):
 	def __init__(self, train_loader, val_loader, test_dataset, args, eval_mode=False):
@@ -72,14 +76,14 @@ class local_trainer(pl.LightningModule):
 
 		pos_idx = torch.tensor(batch['position']).to(self.device)
 
-		if self.args.eval or self.args.debug:
+		if self.args.perturbation_sampling:
 			for i,j in enumerate(pos_idx):
 				n = batch['n'][i]
 	
 				if self.args.sampling_type == 'rand_perturb':
 					pos_idx[i][0:n] = sample_perturb(delta=self.args.delta_retain, pos=pos_idx[i][0:n].float())
 				else:
-					pos_idx[i][0:n] = sample_swap(pos=pos_idx[i][0:n].float(), click=click, fn=self.args.sampling_type)
+					pos_idx[i][0:n] = sample_swap(pos=pos_idx[i][0:n].float(), click=click[i], fn=self.args.sampling_type)
 
 		#pdb.set_trace()
 
@@ -103,17 +107,7 @@ class local_trainer(pl.LightningModule):
 			
 			feat = torch.cat([feat,doc_feats], dim=2) #TODO: Pass doc_feats through MLP before concat
 
-		# if self.args.use_model_preds:
-		# 	# with torch.device('cpu'):
-		# 	row,col = batch['tokens'].shape[0], batch['tokens'].shape[1] 
-		# 	new_batch = {'tokens':batch['tokens'].reshape(row*col,128),
-		# 				'attention_mask':batch['attention_mask'].reshape(row*col,128),
-		# 				'token_types':batch['token_types'].reshape(row*col,128)}
-		# 	pred = np.array(self.cross_enc(new_batch).click)
-		# 	avg_click = torch.sigmoid(torch.tensor(pred).to(self.device).view(row,col)) >= 0.5
-		# 	avg_click = torch.clamp(avg_click.int().sum(dim=1), max=1.0).to(self.device)
-		
-		# pdb.set_trace()
+		#pdb.set_trace()
 
 		out = self.reward_model(inputs_embeds=feat, position_ids=pos_idx, labels=avg_click, doc_feats=doc_feats)
 		return out, avg_click
@@ -125,7 +119,7 @@ class local_trainer(pl.LightningModule):
 		loss = out_dict['loss']
 		logits = out_dict['logits']
 
-		acc = binary_accuracy(logits.squeeze(), labels)
+		acc = binary_accuracy(logits.squeeze(), labels, soft=self.args.soft_labels)
 
 		wandb_out = {"tr_loss": loss, "tr_acc":acc}
 		self.log("tr_loss", loss, prog_bar=True)
@@ -188,7 +182,8 @@ class local_trainer(pl.LightningModule):
 			if self.args.use_wandb:
 				wandb.log(wandb_out)
 				#pdb.set_trace()
-		if self.args.save_cls and batch_idx < self.trainer.num_val_batches[0] - 1:
+
+		if batch_idx < self.trainer.num_val_batches[0] - 1:
 			self.save_output['cls_token_save'].append(cls_token.detach().cpu().squeeze())
 			self.save_output['cls_label_save'].append(labels.detach().cpu().squeeze())
 			self.save_output['cls_prob_save'].append(torch.sigmoid(logits.squeeze()).detach().cpu())
@@ -216,12 +211,13 @@ class local_trainer(pl.LightningModule):
 		if self.args.save_cls:
 			torch.save(torch.stack(self.save_output['cls_token_save']),os.path.join(self.args.output_dir,'saved_cls'))
 			torch.save(torch.stack(self.save_output['cls_label_save']),os.path.join(self.args.output_dir,'saved_label'))
+			torch.save(torch.stack(self.save_output['cls_prob_save']),os.path.join(self.args.output_dir,'saved_prob'))
 		
 		self.val_acc = 0.0
 		self.val_loss = 0.0
 	
 		if self.trainer.global_rank==0 and self.args.n_viz:
-			self.evaluator.plot_tsne(dim=self.config.hidden_size, saved_params=self.save_output)
+			self.evaluator.plot_tsne(dim=self.config.hidden_size, saved_params=self.save_output, val_acc=val_acc_avg)
 	
 	def save(self, epoch):
 		if self.trainer.global_rank==0:
@@ -276,15 +272,21 @@ class Evaluator():
 		self.tsne = TSNE(perplexity=perplexity)
 
 		if not self.args.save_fname:
-			self.args.save_fname='viz.jpg'
+			self.save_fname='org_viz.jpg'
+			self.local_save = 'Mod:\n'+args.output_folder
 		else:
-			self.args.save_fname += '_viz.jpg'
+			self.local_save = args.save_fname
+			self.save_fname = args.save_fname+'_viz.jpg'
+
+		self.save_path = os.path.join(args.output_dir,'figs')
+
+		Path(self.save_path).mkdir(parents=True, exist_ok=True)
 
 	def evaluate(self):
 		args = self.args
 		model = self.model
 
-	def plot_tsne(self, dim=780, saved_path=None, saved_params=None, model=None):
+	def plot_tsne(self, dim=780, saved_path=None, saved_params=None, model=None, val_acc=0.0):
 		
 		n_viz = self.args.n_viz
 
@@ -295,6 +297,7 @@ class Evaluator():
 			cls_token = torch.stack(saved_params['cls_token_save'])
 			cls_label = torch.stack(saved_params['cls_label_save'])
 			cls_prob = torch.stack(saved_params['cls_prob_save'])
+			cls_prob_org = torch.load(os.path.join(self.args.output_dir, 'saved_prob'))
 
 		# if self.args.debug:
 		# 	pdb.set_trace()
@@ -302,25 +305,53 @@ class Evaluator():
 		print('\n Plotting TSNE .... \n')
 		embed = self.tsne.fit_transform(cls_token[0:n_viz].view(-1,dim))
 		cls_pred = (cls_prob >= 0.5).float()
-		cls_prob = (10*cls_prob).int()
+
+		kl_div = distance_prob(cls_prob, cls_prob_org)
+
+		import math
+		accuracy = math.floor(val_acc * 10) / 10
+		kl_div = math.floor(kl_div * 100) / 100
+
+		fig, ax = plt.subplots(1, 3, figsize=(26,8), dpi=220)
+
+		# if self.args.save_cls:
+		# 	fig.text(0.04, 0.5, self.args.model+'\nval_acc: '+str(accuracy)+'\n KL_div: '+str(kl_div), va='center', fontsize=16, fontweight='bold')
+		# else:
+		fig.text(0.04, 0.5, self.local_save+'\n\n Val_acc: '+str(accuracy)+'\n KL_div: '+str(kl_div), 
+		   			va='center', fontsize=16, fontweight='bold')
+		plt.subplots_adjust(wspace=0.04, hspace=0.1)
 
 		title = ['cls_GT_labels','cls_pred_labels','cls_prob']
 		k=0
 		
-		fig, ax = plt.subplots(1, 3, figsize=(24,8), dpi=220)
 		scatter = []
 
-		for i,j in zip(ax,[cls_label,cls_pred,cls_prob]):
+		for i,j in zip(ax,[cls_label,cls_prob]):
 			scatter.append(i.scatter(embed[:, 0], embed[:, 1], c=j[0:n_viz].view(-1), cmap='jet', s=50, alpha=0.7))
 
 			# Add a colorbar
-			plt.colorbar(scatter[-1])
+			#plt.colorbar(scatter[-1])
+			plt.colorbar(scatter[-1], shrink=1.0)
 
 			i.set_title("t-SNE:: "+title[k])
 			#i.xlabel("t-SNE Component 1")
 			#i.ylabel("t-SNE Component 2")
 			i.plot()
-			i.set_aspect('equal')
+			#i.set_aspect('equal')
 			k+=1
 
-		plt.savefig(os.path.join(self.args.output_dir,self.args.save_fname), bbox_inches='tight', pad_inches=0.1)
+		#pdb.set_trace()
+
+		#spl = make_interp_spline(range(self.args.batch_size*n_viz), cls_prob[0:n_viz])
+		plt.hist2d(range(self.args.batch_size*n_viz), cls_prob[0:n_viz].view(-1), bins=20)
+		ax[2].set_title("Score distibution")
+		#ax[2].set_aspect('equal')
+
+		plt.savefig(os.path.join(self.save_path,self.save_fname), bbox_inches='tight', pad_inches=0.1)
+
+		print ('\n saving... \n', os.path.join(self.save_path,self.save_fname))
+
+		if self.args.merge_imgs:
+			all_files = glob.glob(self.save_path+'/*')
+			all_files.sort()
+			merge_images(all_files, output_path=os.path.join(self.args.output_dir,'eval_viz.jpg'),direction='vertical')
