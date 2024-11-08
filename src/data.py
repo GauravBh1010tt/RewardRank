@@ -23,6 +23,10 @@ COLUMNS = {
     "mask": {"padded": True, "dtype": bool},
     "n": {"padded": False, "dtype": int},
     "click": {"padded": True, "dtype": int},
+    "examination_ips": {"padded": True, "dtype": float},
+    "relevance_ips": {"padded": True, "dtype": float},
+    "examination_twotower": {"padded": True, "dtype": float},
+    "relevance_twotower": {"padded": True, "dtype": float},
     "tokens": {"padded": True, "dtype": int},
     "attention_mask": {"attention_mask": True, "dtype": bool},
     "token_types": {"token_types": True, "dtype": int},
@@ -63,6 +67,10 @@ def collate_fn(samples: List[Dict[str, np.ndarray]]):
     """
     batch = defaultdict(lambda: [])
     max_n = int(max([sample["n"] for sample in samples]))
+
+    #max_n = min(max_n, 50)
+
+    #print(max_n)
     
     #pdb.set_trace()
 

@@ -26,8 +26,16 @@ class BertEmbeddings(nn.Module):
 
     def __init__(self, config):
         super().__init__()
-        self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=config.pad_token_id)
-        self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size)
+
+        self.config = config
+        self.use_pos_embed = False
+
+        if config.use_word_embed:
+            self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=config.pad_token_id)
+        if config.use_pos_embed:
+            self.use_pos_embed = True
+            self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size) #TODO: other ways of PE
+
         self.token_type_embeddings = nn.Embedding(config.type_vocab_size, config.hidden_size)
 
         # self.LayerNorm is not snake-cased to stick with TensorFlow model variable name and be able to load
@@ -48,6 +56,7 @@ class BertEmbeddings(nn.Module):
         input_ids: Optional[torch.LongTensor] = None,
         token_type_ids: Optional[torch.LongTensor] = None,
         position_ids: Optional[torch.LongTensor] = None,
+        soft_position_ids: Optional[torch.LongTensor] = None,
         inputs_embeds: Optional[torch.FloatTensor] = None,
         past_key_values_length: int = 0,
     ) -> torch.Tensor:
@@ -77,10 +86,19 @@ class BertEmbeddings(nn.Module):
         token_type_embeddings = self.token_type_embeddings(token_type_ids)
 
         embeddings = inputs_embeds + token_type_embeddings
-        if self.position_embedding_type == "absolute":
-            position_embeddings = self.position_embeddings(position_ids)
+        #if self.position_embedding_type == "absolute":
+
+        if self.use_pos_embed:
+
+            if soft_position_ids==None:
+                position_embeddings = self.position_embeddings(position_ids)
+            else:
+                #pdb.set_trace()
+                phat_mat = soft_position_ids
+                pos_emb_mat = self.position_embeddings.weight[1:phat_mat.shape[-1]+1,:] # remove the 1st row as it is reserved for padded index
+                soft_pos_mat = torch.matmul(phat_mat.permute(0,2,1), pos_emb_mat) # permute p_hat to ensure positions are multiplied with position_embedding_matrix
+                position_embeddings = soft_pos_mat #TODO:linear combination of items instead of positions
             embeddings += position_embeddings
-        #pdb.set_trace()
         embeddings = self.LayerNorm(embeddings)
         embeddings = self.dropout(embeddings)
         return embeddings
@@ -250,6 +268,7 @@ class BertModel(BertPreTrainedModel):
         attention_mask: Optional[torch.Tensor] = None,
         token_type_ids: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.Tensor] = None,
+        soft_position_ids: Optional[torch.Tensor] = None,
         head_mask: Optional[torch.Tensor] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
         encoder_hidden_states: Optional[torch.Tensor] = None,
@@ -323,6 +342,7 @@ class BertModel(BertPreTrainedModel):
             token_type_ids=token_type_ids,
             inputs_embeds=inputs_embeds,
             past_key_values_length=past_key_values_length,
+            soft_position_ids=soft_position_ids,
         )
 
         if attention_mask is None:
@@ -434,6 +454,7 @@ class BertReward(BertPreTrainedModel):
         attention_mask: Optional[torch.Tensor] = None,
         token_type_ids: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.Tensor] = None,
+        soft_position_ids: Optional[torch.Tensor] = None,
         head_mask: Optional[torch.Tensor] = None,
         doc_feats: Optional[torch.Tensor] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
@@ -460,14 +481,18 @@ class BertReward(BertPreTrainedModel):
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
+            soft_position_ids=soft_position_ids,
         )
 
-        pooled_output = outputs[1]
+        cls_token = outputs[1]
+        item_feats = outputs[0]
 
         #pdb.set_trace()
 
-        pooled_output = self.dropout(pooled_output)
+        pooled_output = self.dropout(cls_token)
         logits = self.classifier(pooled_output)
+
+        #TODO:item features as aux loss
 
         loss = None
 
@@ -508,3 +533,82 @@ class BertReward(BertPreTrainedModel):
         #     hidden_states=outputs.hidden_states,
         #     attentions=outputs.attentions,
         # )
+
+
+class BertArranger(BertPreTrainedModel):
+    def __init__(self, config):
+        super().__init__(config)
+        self.num_labels = config.num_labels
+        self.config = config
+
+        self.bert = BertModel(config)
+        classifier_dropout = (
+            config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
+        )
+        self.dropout = nn.Dropout(classifier_dropout)
+        #self.doc_feat_transform = nn.Linear(config.hidden_size, config.num_labels)
+        #self.classifier = nn.Linear(config.hidden_size, config.num_labels)
+
+        if config.concat_feats:
+            self.classifier = nn.Linear(config.hidden_size*2, 1)
+        else:
+            self.classifier = nn.Linear(config.hidden_size, 1)
+
+        # Initialize weights and apply final processing
+        self.post_init()
+
+    def forward(
+        self,
+        input_ids: Optional[torch.Tensor] = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        token_type_ids: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.Tensor] = None,
+        head_mask: Optional[torch.Tensor] = None,
+        doc_feats: Optional[torch.Tensor] = None,
+        inputs_embeds: Optional[torch.Tensor] = None,
+        labels: Optional[torch.Tensor] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+    ) -> Union[Tuple[torch.Tensor], SequenceClassifierOutput]:
+        r"""
+        labels (`torch.LongTensor` of shape `(batch_size,)`, *optional*):
+            Labels for computing the sequence classification/regression loss. Indices should be in `[0, ...,
+            config.num_labels - 1]`. If `config.num_labels == 1` a regression loss is computed (Mean-Square loss), If
+            `config.num_labels > 1` a classification loss is computed (Cross-Entropy).
+        """
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        outputs = self.bert(
+            input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+
+        cls_token = outputs[1]
+        item_feats = outputs[0]
+
+        #logits = torch.zeros(inputs_embeds.shape[0], inputs_embeds.shape[1]).to(self.device)
+        if self.config.concat_feats:
+            item_feats = torch.concat((item_feats, inputs_embeds), dim=-1)
+
+        #     pdb.set_trace()
+        logits = []
+        for i in range(item_feats.shape[1]):
+            pooled_output = self.dropout(item_feats[:,i,:])
+            logits.append(self.classifier(pooled_output))
+
+        out_dict={
+            'logits':torch.stack(logits).transpose(0,1).squeeze(),
+            'hidden_states':outputs.hidden_states,
+            'attentions':outputs.attentions,
+            'cls_token':cls_token,
+        }
+
+        return out_dict

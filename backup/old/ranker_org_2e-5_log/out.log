@@ -1,0 +1,110 @@
+Logging: args  Namespace(lr=2e-05, batch_size=512, weight_decay=0.01, epochs=25, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models=None, lr_drop=15, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.9, soft_gain=0.02, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=2, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='ranker_org_2e-5_log', load_path='', load_path_reward='/home/ec2-user/workspace/outputs/sr_df/checkpoints/checkpoint35.pth', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=False, concat_feats=True, merge_imgs=False, train_ranker=True, train_ranker_lambda=True, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=False, use_wandb=False, use_doc_feat=True, num_workers=4, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/ranker_org_2e-5_log/out.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', limit_train_batches=None, limit_val_batches=None, limit_test_batches=None, output_dir='/home/ec2-user/workspace/outputs/ranker_org_2e-5_log')
+Logging: args  Namespace(lr=2e-05, batch_size=512, weight_decay=0.01, epochs=25, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models=None, lr_drop=15, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.9, soft_gain=0.02, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=2, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='ranker_org_2e-5_log', load_path='', load_path_reward='/home/ec2-user/workspace/outputs/sr_df/checkpoints/checkpoint35.pth', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=False, concat_feats=True, merge_imgs=False, train_ranker=True, train_ranker_lambda=True, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=False, use_wandb=False, use_doc_feat=True, num_workers=4, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/ranker_org_2e-5_log/out.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', limit_train_batches=None, limit_val_batches=None, limit_test_batches=None, output_dir='/home/ec2-user/workspace/outputs/ranker_org_2e-5_log')
+
+ Val acc after  0  epochs :  0.13180904818762992   loss :  0.6574483622764719
+
+ Train acc after  0  epochs :  0.11712412611810864   loss :  0.6642589798657181
+
+ Val acc after  1  epochs :  0.16969656330244295   loss :  0.6558212145649154
+
+ Train acc after  1  epochs :  0.16446090110984593   loss :  0.6581384241752537
+
+ Val acc after  2  epochs :  0.20050263990615977   loss :  0.6556781265242346
+
+ Train acc after  2  epochs :  0.2021238338170068   loss :  0.6569341006948815
+
+ Val acc after  3  epochs :  0.2848247654222209   loss :  0.6553685289004754
+
+ Train acc after  3  epochs :  0.24065501745157566   loss :  0.6562592542988168
+
+ Val acc after  4  epochs :  0.23256452263429248   loss :  0.656716654321243
+
+ Train acc after  4  epochs :  0.2509730079039185   loss :  0.655987546371192
+
+ Val acc after  5  epochs :  0.30340991164075914   loss :  0.6537595743763036
+
+ Saving at epoch  5
+
+ Train acc after  5  epochs :  0.2781990181716887   loss :  0.6559125860669384
+
+ Val acc after  6  epochs :  0.3114533679752514   loss :  0.6543679549776275
+
+ Train acc after  6  epochs :  0.27312587710310826   loss :  0.6547884568786512
+
+ Val acc after  7  epochs :  0.3445549540992441   loss :  0.6538728004899518
+
+ Train acc after  7  epochs :  0.30273947024489517   loss :  0.6553103043625392
+
+ Val acc after  8  epochs :  0.268825726133996   loss :  0.6529734494357273
+
+ Train acc after  8  epochs :  0.3230909537620495   loss :  0.6550803810066372
+
+ Val acc after  9  epochs :  0.33717733570213976   loss :  0.6531602503924534
+
+ Train acc after  9  epochs :  0.31830034792320305   loss :  0.6547507653994058
+
+ Val acc after  10  epochs :  0.2855253050810304   loss :  0.6532185861776615
+
+ Saving at epoch  10
+
+ Train acc after  10  epochs :  0.3236041181754572   loss :  0.6536144477647134
+
+ Val acc after  11  epochs :  0.3259802394899829   loss :  0.6528713019757435
+
+ Train acc after  11  epochs :  0.28456939499509976   loss :  0.6539502576911457
+
+ Val acc after  12  epochs :  0.29902173892177386   loss :  0.6524144991718489
+
+ Train acc after  12  epochs :  0.2997688427781949   loss :  0.6540439357068529
+
+ Val acc after  13  epochs :  0.2894452474754432   loss :  0.6514809936285019
+
+ Train acc after  13  epochs :  0.3023860602112563   loss :  0.6529603004798713
+
+ Val acc after  14  epochs :  0.30072836618998955   loss :  0.6522929405343943
+
+ Train acc after  14  epochs :  0.29235302976444666   loss :  0.653374437257759
+
+ Val acc after  15  epochs :  0.298818062605529   loss :  0.6506198178077566
+
+ Saving at epoch  15
+
+ Train acc after  15  epochs :  0.29967859582133727   loss :  0.6519045383338621
+
+ Val acc after  16  epochs :  0.30059849871643657   loss :  0.6502656779412566
+
+ Train acc after  16  epochs :  0.30022989073634215   loss :  0.6515237397686393
+
+ Val acc after  17  epochs :  0.2997070217440868   loss :  0.6499995836923862
+
+ Train acc after  17  epochs :  0.30071000925548885   loss :  0.6512301235138581
+
+ Val acc after  18  epochs :  0.29860951134870795   loss :  0.6498708357071055
+
+ Train acc after  18  epochs :  0.29902796786134794   loss :  0.6514117947308304
+
+ Val acc after  19  epochs :  0.2998895029055661   loss :  0.6496806871274422
+
+ Train acc after  19  epochs :  0.29949507054647084   loss :  0.6510622770743735
+
+ Val acc after  20  epochs :  0.31183329943952887   loss :  0.649613179626136
+
+ Saving at epoch  20
+
+ Train acc after  20  epochs :  0.30562493271126306   loss :  0.6503491074653213
+
+ Val acc after  21  epochs :  0.3151258368430466   loss :  0.64963253644006
+
+ Train acc after  21  epochs :  0.312884896624754   loss :  0.6504003182182246
+
+ Val acc after  22  epochs :  0.31442466522085255   loss :  0.6495183526441969
+
+ Train acc after  22  epochs :  0.31519406404245426   loss :  0.6503931274685835
+
+ Val acc after  23  epochs :  0.3164541284585821   loss :  0.6493094523405206
+
+ Train acc after  23  epochs :  0.3133619681095075   loss :  0.6501949346813581
+
+ Val acc after  24  epochs :  0.30694488394877006   loss :  0.6495335876941681
+
+ Train acc after  24  epochs :  0.3126826678876158   loss :  0.6503261515101827

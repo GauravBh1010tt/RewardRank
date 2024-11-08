@@ -1,0 +1,2 @@
+epoch,step,val_TV_reward,val_loss_reward
+0,0,10536.306888238201,0.6978483277385882

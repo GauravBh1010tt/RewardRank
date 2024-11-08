@@ -1,0 +1,118 @@
+Logging: args  Namespace(lr=2e-06, batch_size=512, weight_decay=0.01, epochs=25, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models='ips', lr_drop=15, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.9, soft_gain=0.02, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=2, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='rr_ips_hard_pre_2e-6', load_path='', load_path_reward='/home/ec2-user/workspace/outputs/ultr_ips/checkpoints/checkpoint30.pth', load_path_ranker='/home/ec2-user/workspace/outputs/ranker_ips/checkpoints/checkpoint20.pth', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=False, ste=True, concat_feats=False, pretrain_ranker=True, merge_imgs=False, train_ranker=True, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=False, use_wandb=False, use_doc_feat=True, num_workers=4, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/rr_ips_hard_pre_2e-6/out.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', limit_train_batches=None, limit_val_batches=None, limit_test_batches=None, output_dir='/home/ec2-user/workspace/outputs/rr_ips_hard_pre_2e-6')
+
+ Resuming  reward _model from :  /home/ec2-user/workspace/outputs/ultr_ips/checkpoints/checkpoint30.pth
+
+ Resuming  arranger _model from :  /home/ec2-user/workspace/outputs/ranker_ips/checkpoints/checkpoint20.pth
+Logging: args  Namespace(lr=2e-06, batch_size=512, weight_decay=0.01, epochs=25, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models='ips', lr_drop=15, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.9, soft_gain=0.02, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=2, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='rr_ips_hard_pre_2e-6', load_path='', load_path_reward='/home/ec2-user/workspace/outputs/ultr_ips/checkpoints/checkpoint30.pth', load_path_ranker='/home/ec2-user/workspace/outputs/ranker_ips/checkpoints/checkpoint20.pth', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=False, ste=True, concat_feats=False, pretrain_ranker=True, merge_imgs=False, train_ranker=True, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=False, use_wandb=False, use_doc_feat=True, num_workers=4, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/rr_ips_hard_pre_2e-6/out.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', limit_train_batches=None, limit_val_batches=None, limit_test_batches=None, output_dir='/home/ec2-user/workspace/outputs/rr_ips_hard_pre_2e-6')
+
+ Resuming  reward _model from :  /home/ec2-user/workspace/outputs/ultr_ips/checkpoints/checkpoint30.pth
+
+ Resuming  arranger _model from :  /home/ec2-user/workspace/outputs/ranker_ips/checkpoints/checkpoint20.pth
+
+ Val acc after  0  epochs :  tensor(11.4741, device='cuda:0', dtype=torch.float64)   loss :  0.6393814484666075
+
+ Train acc after  0  epochs :  75.00404792746114   loss :  0.636836487171638
+
+ Val acc after  1  epochs :  tensor(11.4902, device='cuda:0', dtype=torch.float64)   loss :  0.6401732746408775
+
+ Train acc after  1  epochs :  75.12211247841105   loss :  0.6367944343228022
+
+ Val acc after  2  epochs :  tensor(11.3872, device='cuda:0', dtype=torch.float64)   loss :  0.6387982436238644
+
+ Train acc after  2  epochs :  75.01000737622337   loss :  0.6371812821253939
+
+ Val acc after  3  epochs :  tensor(11.5740, device='cuda:0', dtype=torch.float64)   loss :  0.641218500993414
+
+ Train acc after  3  epochs :  74.99134193293034   loss :  0.6366378067501292
+
+ Val acc after  4  epochs :  tensor(11.4039, device='cuda:0', dtype=torch.float64)   loss :  0.6388946537751258
+
+ Train acc after  4  epochs :  74.94355390040299   loss :  0.6370300552199606
+
+ Val acc after  5  epochs :  tensor(11.3865, device='cuda:0', dtype=torch.float64)   loss :  0.6384117545786865
+
+ Saving at epoch  5
+
+ Train acc after  5  epochs :  74.7980533966609   loss :  0.6373942889012333
+
+ Val acc after  6  epochs :  tensor(11.4435, device='cuda:0', dtype=torch.float64)   loss :  0.6387764923148044
+
+ Train acc after  6  epochs :  74.7515022308578   loss :  0.6372032636587528
+
+ Val acc after  7  epochs :  tensor(11.4970, device='cuda:0', dtype=torch.float64)   loss :  0.6394891918895297
+
+ Train acc after  7  epochs :  74.62646624928037   loss :  0.6378781886154283
+
+ Val acc after  8  epochs :  tensor(11.4595, device='cuda:0', dtype=torch.float64)   loss :  0.6391785332586396
+
+ Train acc after  8  epochs :  74.64929206246401   loss :  0.6376019412585968
+
+ Val acc after  9  epochs :  tensor(11.4317, device='cuda:0', dtype=torch.float64)   loss :  0.6389770325815228
+
+ Train acc after  9  epochs :  74.74475568508923   loss :  0.6376908200680145
+
+ Val acc after  10  epochs :  tensor(11.4588, device='cuda:0', dtype=torch.float64)   loss :  0.6391875667936648
+
+ Saving at epoch  10
+
+ Train acc after  10  epochs :  74.73351144214162   loss :  0.6374579177197502
+
+ Val acc after  11  epochs :  tensor(11.4326, device='cuda:0', dtype=torch.float64)   loss :  0.6390279701035985
+
+ Train acc after  11  epochs :  74.80030224525044   loss :  0.6375395504553603
+
+ Val acc after  12  epochs :  tensor(11.4056, device='cuda:0', dtype=torch.float64)   loss :  0.6387236458388714
+
+ Train acc after  12  epochs :  74.68111327000575   loss :  0.6377078774639721
+
+ Val acc after  13  epochs :  tensor(11.4084, device='cuda:0', dtype=torch.float64)   loss :  0.6389167960172294
+
+ Train acc after  13  epochs :  74.67515382124353   loss :  0.6374957505140871
+
+ Val acc after  14  epochs :  tensor(11.5438, device='cuda:0', dtype=torch.float64)   loss :  0.6405120227746741
+
+ Train acc after  14  epochs :  74.71956858088659   loss :  0.6381830605402767
+
+ Val acc after  15  epochs :  tensor(11.3846, device='cuda:0', dtype=torch.float64)   loss :  0.6384359017404025
+
+ Saving at epoch  15
+
+ Train acc after  15  epochs :  74.77511514104778   loss :  0.6376664683799116
+
+ Val acc after  16  epochs :  tensor(11.3898, device='cuda:0', dtype=torch.float64)   loss :  0.6385196814620443
+
+ Train acc after  16  epochs :  74.72159254461715   loss :  0.6369352188984878
+
+ Val acc after  17  epochs :  tensor(11.3969, device='cuda:0', dtype=torch.float64)   loss :  0.638597390106022
+
+ Train acc after  17  epochs :  74.74171973949338   loss :  0.6370409952151136
+
+ Val acc after  18  epochs :  tensor(11.4082, device='cuda:0', dtype=torch.float64)   loss :  0.6387317079037614
+
+ Train acc after  18  epochs :  74.69606811312607   loss :  0.6369873587986042
+
+ Val acc after  19  epochs :  tensor(11.4084, device='cuda:0', dtype=torch.float64)   loss :  0.6387568162883954
+
+ Train acc after  19  epochs :  74.85146355066206   loss :  0.6367297542593993
+
+ Val acc after  20  epochs :  tensor(11.3872, device='cuda:0', dtype=torch.float64)   loss :  0.6385150828123389
+
+ Saving at epoch  20
+
+ Train acc after  20  epochs :  74.7275519933794   loss :  0.6369638411915721
+
+ Val acc after  21  epochs :  tensor(11.4135, device='cuda:0', dtype=torch.float64)   loss :  0.6388477129425316
+
+ Train acc after  21  epochs :  74.72271696891191   loss :  0.6368525296643612
+
+ Val acc after  22  epochs :  tensor(11.3890, device='cuda:0', dtype=torch.float64)   loss :  0.6384675343187689
+
+ Train acc after  22  epochs :  74.70832433793898   loss :  0.6372576797084744
+
+ Val acc after  23  epochs :  tensor(11.4144, device='cuda:0', dtype=torch.float64)   loss :  0.6388488434117392
+
+ Train acc after  23  epochs :  74.65367731721359   loss :  0.6372390274031643
+
+ Val acc after  24  epochs :  tensor(11.4091, device='cuda:0', dtype=torch.float64)   loss :  0.6388131856185377
+
+ Train acc after  24  epochs :  74.77635200777202   loss :  0.6370943396551096

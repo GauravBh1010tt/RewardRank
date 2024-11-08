@@ -1,0 +1,72 @@
+Logging: args  Namespace(lr=2e-05, batch_size=512, weight_decay=0.01, epochs=26, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models='ips', lr_drop=18, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.9, soft_gain=0.02, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=2, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='rr_ips_hard_pre', load_path='', load_path_reward='/home/ec2-user/workspace/outputs/ultr_ips_fix_new/checkpoints/checkpoint25.pth', load_path_ranker='/home/ec2-user/workspace/outputs/ranker_ips_fix_new/checkpoints/checkpoint25.pth', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=False, eval_ultr=False, ste=True, concat_feats=False, pretrain_ranker=True, merge_imgs=False, train_ranker=True, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=False, use_wandb=False, use_rax=False, use_doc_feat=True, num_workers=4, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/rr_ips_hard_pre/out.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', limit_train_batches=None, limit_val_batches=None, limit_test_batches=None, output_dir='/home/ec2-user/workspace/outputs/rr_ips_hard_pre')
+
+ Resuming  reward _model from :  /home/ec2-user/workspace/outputs/ultr_ips_fix_new/checkpoints/checkpoint25.pth
+
+ Resuming  arranger _model from :  /home/ec2-user/workspace/outputs/ranker_ips_fix_new/checkpoints/checkpoint25.pth
+
+ Val acc " ndcg " after  0  epochs :  0.6572419869488684
+
+ Val acc " ndcg " after  1  epochs :  0.676490118277484
+
+ Val acc " ndcg " after  2  epochs :  0.637029776182668
+
+ Val acc " ndcg " after  3  epochs :  0.6662130796703799
+
+ Val acc " ndcg " after  4  epochs :  0.630899856933232
+
+ Val acc " ndcg " after  5  epochs :  0.6115681307069186
+
+ Saving at epoch  5
+
+ Val acc " ndcg " after  6  epochs :  0.6037337454228565
+
+ Val acc " ndcg " after  7  epochs :  0.6424101410240962
+
+ Val acc " ndcg " after  8  epochs :  0.5776219934225082
+
+ Val acc " ndcg " after  9  epochs :  0.6544291754221094
+
+ Val acc " ndcg " after  10  epochs :  0.577439210949273
+
+ Saving at epoch  10
+
+ Val acc " ndcg " after  11  epochs :  0.5387689963496964
+
+ Val acc " ndcg " after  12  epochs :  0.5905908113923566
+
+ Val acc " ndcg " after  13  epochs :  0.5685433832735851
+
+ Val acc " ndcg " after  14  epochs :  0.6743562980972487
+
+ Val acc " ndcg " after  15  epochs :  0.6653761891455486
+
+ Saving at epoch  15
+
+ Val acc " ndcg " after  16  epochs :  0.6370610010007333
+
+ Val acc " ndcg " after  17  epochs :  0.6658486631409876
+
+ Val acc " ndcg " after  18  epochs :  0.7026579857900225
+
+ Val acc " ndcg " after  19  epochs :  0.6428700584789803
+
+ Val acc " ndcg " after  20  epochs :  0.6239187045343991
+
+ Saving at epoch  20
+
+ Val acc " ndcg " after  21  epochs :  0.6586000182505312
+
+ Val acc " ndcg " after  22  epochs :  0.6686359345912933
+
+ Val acc " ndcg " after  23  epochs :  0.7105923696838576
+
+ Val acc " ndcg " after  24  epochs :  0.6783622907153491
+
+ Val acc " ndcg " after  25  epochs :  0.7143227871122031
+
+ Saving at epoch  25
+Logging: args  Namespace(lr=2e-05, batch_size=512, weight_decay=0.01, epochs=26, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models='ips', lr_drop=18, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.9, soft_gain=0.02, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=2, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='rr_ips_hard_pre', load_path='', load_path_reward='/home/ec2-user/workspace/outputs/ultr_ips_fix_new/checkpoints/checkpoint25.pth', load_path_ranker='/home/ec2-user/workspace/outputs/ranker_ips_fix_new/checkpoints/checkpoint25.pth', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=False, eval_ultr=False, ste=True, concat_feats=False, pretrain_ranker=True, merge_imgs=False, train_ranker=True, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=False, use_wandb=False, use_rax=False, use_doc_feat=True, num_workers=4, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/rr_ips_hard_pre/out.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', limit_train_batches=None, limit_val_batches=None, limit_test_batches=None, output_dir='/home/ec2-user/workspace/outputs/rr_ips_hard_pre')
+
+ Resuming  reward _model from :  /home/ec2-user/workspace/outputs/ultr_ips_fix_new/checkpoints/checkpoint25.pth
+
+ Resuming  arranger _model from :  /home/ec2-user/workspace/outputs/ranker_ips_fix_new/checkpoints/checkpoint25.pth

@@ -1,0 +1,464 @@
+ERROR:root:An error occurred:
+Traceback (most recent call last):
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 236, in <module>
+    main(args)
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 198, in main
+    pyl_trainer.validate(trainer,test_dataloader)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 639, in validate
+    return call._call_and_handle_interrupt(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 46, in _call_and_handle_interrupt
+    return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/launchers/subprocess_script.py", line 105, in launch
+    return function(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 679, in _validate_impl
+    results = self._run(model, ckpt_path=ckpt_path)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1018, in _run_stage
+    return self._evaluation_loop.run()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/utilities.py", line 178, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 135, in run
+    self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 396, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 319, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 411, in validation_step
+    return self.lightning_module.validation_step(*args, **kwargs)
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 288, in validation_step
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 148, in common_step
+    #pdb.set_trace()
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 148, in common_step
+    #pdb.set_trace()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/bdb.py", line 88, in trace_dispatch
+    return self.dispatch_line(frame)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/bdb.py", line 113, in dispatch_line
+    if self.quitting: raise BdbQuit
+bdb.BdbQuit
+ERROR:root:An error occurred:
+Traceback (most recent call last):
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 236, in <module>
+    main(args)
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 198, in main
+    pyl_trainer.validate(trainer,test_dataloader)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 639, in validate
+    return call._call_and_handle_interrupt(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 46, in _call_and_handle_interrupt
+    return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/launchers/subprocess_script.py", line 105, in launch
+    return function(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 679, in _validate_impl
+    results = self._run(model, ckpt_path=ckpt_path)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1018, in _run_stage
+    return self._evaluation_loop.run()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/utilities.py", line 178, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 135, in run
+    self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 396, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 319, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 411, in validation_step
+    return self.lightning_module.validation_step(*args, **kwargs)
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 332, in validation_step
+    self.log("val_loss_reward", out_dict['reward']['loss'], prog_bar=True, sync_dist=True)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/core/module.py", line 525, in log
+    results.log(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/logger_connector/result.py", line 413, in log
+    batch_size = self._extract_batch_size(self[key], batch_size, meta)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/logger_connector/result.py", line 349, in _extract_batch_size
+    batch_size = extract_batch_size(self.batch)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/utilities/data.py", line 87, in extract_batch_size
+    raise MisconfigurationException(error_msg)
+lightning_fabric.utilities.exceptions.MisconfigurationException: We could not infer the batch_size from the batch. Either simplify its structure or provide the batch_size as `self.log(..., batch_size=batch_size)`.
+ERROR:root:An error occurred:
+Traceback (most recent call last):
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 236, in <module>
+    main(args)
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 200, in main
+    pyl_trainer.fit(trainer, train_dataloader, test_dataloader)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 538, in fit
+    call._call_and_handle_interrupt(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 46, in _call_and_handle_interrupt
+    return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/launchers/subprocess_script.py", line 105, in launch
+    return function(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 574, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1025, in _run_stage
+    self.fit_loop.run()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/fit_loop.py", line 205, in run
+    self.advance()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/fit_loop.py", line 363, in advance
+    self.epoch_loop.run(self._data_fetcher)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 141, in run
+    self.on_advance_end(data_fetcher)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 295, in on_advance_end
+    self.val_loop.run()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/utilities.py", line 178, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 135, in run
+    self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 396, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 319, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 410, in validation_step
+    return self._forward_redirection(self.model, self.lightning_module, "validation_step", *args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 640, in __call__
+    wrapper_output = wrapper_module(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/torch/nn/parallel/distributed.py", line 1636, in forward
+    else self._run_ddp_forward(*inputs, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/torch/nn/parallel/distributed.py", line 1454, in _run_ddp_forward
+    return self.module(*inputs, **kwargs)  # type: ignore[index]
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 633, in wrapped_forward
+    out = method(*_args, **_kwargs)
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 332, in validation_step
+    self.log("val_loss_reward", out_dict['reward']['loss'], prog_bar=True, sync_dist=True)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/core/module.py", line 525, in log
+    results.log(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/logger_connector/result.py", line 413, in log
+    batch_size = self._extract_batch_size(self[key], batch_size, meta)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/logger_connector/result.py", line 349, in _extract_batch_size
+    batch_size = extract_batch_size(self.batch)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/utilities/data.py", line 87, in extract_batch_size
+    raise MisconfigurationException(error_msg)
+lightning_fabric.utilities.exceptions.MisconfigurationException: We could not infer the batch_size from the batch. Either simplify its structure or provide the batch_size as `self.log(..., batch_size=batch_size)`.
+ERROR:root:An error occurred:
+Traceback (most recent call last):
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 236, in <module>
+    main(args)
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 200, in main
+    pyl_trainer.fit(trainer, train_dataloader, test_dataloader)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 538, in fit
+    call._call_and_handle_interrupt(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 46, in _call_and_handle_interrupt
+    return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/launchers/subprocess_script.py", line 105, in launch
+    return function(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 574, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1025, in _run_stage
+    self.fit_loop.run()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/fit_loop.py", line 205, in run
+    self.advance()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/fit_loop.py", line 363, in advance
+    self.epoch_loop.run(self._data_fetcher)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 141, in run
+    self.on_advance_end(data_fetcher)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 295, in on_advance_end
+    self.val_loop.run()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/utilities.py", line 178, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 135, in run
+    self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 396, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 319, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 410, in validation_step
+    return self._forward_redirection(self.model, self.lightning_module, "validation_step", *args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 640, in __call__
+    wrapper_output = wrapper_module(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/torch/nn/parallel/distributed.py", line 1636, in forward
+    else self._run_ddp_forward(*inputs, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/torch/nn/parallel/distributed.py", line 1454, in _run_ddp_forward
+    return self.module(*inputs, **kwargs)  # type: ignore[index]
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 633, in wrapped_forward
+    out = method(*_args, **_kwargs)
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 333, in validation_step
+    self.log("val_loss_reward", out_dict['reward']['loss'], prog_bar=True, sync_dist=True, batch_size=1)
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 333, in validation_step
+    self.log("val_loss_reward", out_dict['reward']['loss'], prog_bar=True, sync_dist=True, batch_size=1)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/bdb.py", line 88, in trace_dispatch
+    return self.dispatch_line(frame)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/bdb.py", line 113, in dispatch_line
+    if self.quitting: raise BdbQuit
+bdb.BdbQuit
+ERROR:root:An error occurred:
+Traceback (most recent call last):
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 236, in <module>
+    main(args)
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 198, in main
+    pyl_trainer.validate(trainer,test_dataloader)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 639, in validate
+    return call._call_and_handle_interrupt(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 46, in _call_and_handle_interrupt
+    return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/launchers/subprocess_script.py", line 105, in launch
+    return function(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 679, in _validate_impl
+    results = self._run(model, ckpt_path=ckpt_path)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1018, in _run_stage
+    return self._evaluation_loop.run()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/utilities.py", line 178, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 135, in run
+    self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 396, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 319, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 411, in validation_step
+    return self.lightning_module.validation_step(*args, **kwargs)
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 324, in validation_step
+    acc_ranker = get_ndcg(out_dict['ranker']['logits'].detach().cpu(), out_dict['ranker']['labels'].detach().cpu(), return_dcg=self.args.use_dcg) #TODO:padded index
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 324, in validation_step
+    acc_ranker = get_ndcg(out_dict['ranker']['logits'].detach().cpu(), out_dict['ranker']['labels'].detach().cpu(), return_dcg=self.args.use_dcg) #TODO:padded index
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/bdb.py", line 88, in trace_dispatch
+    return self.dispatch_line(frame)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/bdb.py", line 113, in dispatch_line
+    if self.quitting: raise BdbQuit
+bdb.BdbQuit
+ERROR:root:An error occurred:
+Traceback (most recent call last):
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 236, in <module>
+    try:
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 198, in main
+    trainer.resume(load_path=args.load_path, model='reward')
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 639, in validate
+    return call._call_and_handle_interrupt(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 46, in _call_and_handle_interrupt
+    return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/launchers/subprocess_script.py", line 105, in launch
+    return function(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 679, in _validate_impl
+    results = self._run(model, ckpt_path=ckpt_path)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1018, in _run_stage
+    return self._evaluation_loop.run()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/utilities.py", line 178, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 135, in run
+    self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 396, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 319, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 411, in validation_step
+    return self.lightning_module.validation_step(*args, **kwargs)
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 324, in validation_step
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 324, in validation_step
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/bdb.py", line 88, in trace_dispatch
+    return self.dispatch_line(frame)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/bdb.py", line 113, in dispatch_line
+    if self.quitting: raise BdbQuit
+bdb.BdbQuit
+ERROR:root:An error occurred:
+Traceback (most recent call last):
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 237, in <module>
+    main(args)
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 199, in main
+    pyl_trainer.validate(trainer,test_dataloader)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 639, in validate
+    return call._call_and_handle_interrupt(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 46, in _call_and_handle_interrupt
+    return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/launchers/subprocess_script.py", line 105, in launch
+    return function(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 679, in _validate_impl
+    results = self._run(model, ckpt_path=ckpt_path)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1018, in _run_stage
+    return self._evaluation_loop.run()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/utilities.py", line 178, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 135, in run
+    self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 396, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 319, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 411, in validation_step
+    return self.lightning_module.validation_step(*args, **kwargs)
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 319, in validation_step
+    out_dict = self.common_step(batch, batch_idx)
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 218, in common_step
+    eval_ultr(batch=batch, pred_scores=logits, ips_model=self.ips_model, device=self.device)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1729, in __getattr__
+    raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+AttributeError: 'local_trainer' object has no attribute 'ips_model'
+ERROR:root:An error occurred:
+Traceback (most recent call last):
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 237, in <module>
+    main(args)
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 199, in main
+    pyl_trainer.validate(trainer,test_dataloader)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 639, in validate
+    return call._call_and_handle_interrupt(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 46, in _call_and_handle_interrupt
+    return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/launchers/subprocess_script.py", line 105, in launch
+    return function(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 679, in _validate_impl
+    results = self._run(model, ckpt_path=ckpt_path)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1018, in _run_stage
+    return self._evaluation_loop.run()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/utilities.py", line 178, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 135, in run
+    self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 396, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 319, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 411, in validation_step
+    return self.lightning_module.validation_step(*args, **kwargs)
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 319, in validation_step
+    out_dict = self.common_step(batch, batch_idx)
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 218, in common_step
+    eval_ultr(batch=batch, pred_scores=logits, ips_model=self.ips_model, device=self.device)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1729, in __getattr__
+    raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+AttributeError: 'local_trainer' object has no attribute 'ips_model'
+ERROR:root:An error occurred:
+Traceback (most recent call last):
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 237, in <module>
+    main(args)
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 199, in main
+    pyl_trainer.validate(trainer,test_dataloader)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 639, in validate
+    return call._call_and_handle_interrupt(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 46, in _call_and_handle_interrupt
+    return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/launchers/subprocess_script.py", line 105, in launch
+    return function(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 679, in _validate_impl
+    results = self._run(model, ckpt_path=ckpt_path)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1018, in _run_stage
+    return self._evaluation_loop.run()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/utilities.py", line 178, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 135, in run
+    self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 396, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 319, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 411, in validation_step
+    return self.lightning_module.validation_step(*args, **kwargs)
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 319, in validation_step
+    out_dict = self.common_step(batch, batch_idx)
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 218, in common_step
+    eval_ultr(batch=batch, pred_scores=logits, ips_model=self.ips_model, device=self.device)
+  File "/home/ec2-user/workspace/cf_rank/src/utils.py", line 408, in eval_ultr
+    new_positions = np.array(new_positions.detach().cpu())
+  File "/home/ec2-user/workspace/cf_rank/src/utils.py", line 408, in eval_ultr
+    new_positions = np.array(new_positions.detach().cpu())
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/bdb.py", line 88, in trace_dispatch
+    return self.dispatch_line(frame)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/bdb.py", line 113, in dispatch_line
+    if self.quitting: raise BdbQuit
+bdb.BdbQuit
+ERROR:root:An error occurred:
+Traceback (most recent call last):
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 237, in <module>
+    main(args)
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 199, in main
+    pyl_trainer.validate(trainer,test_dataloader)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 639, in validate
+    return call._call_and_handle_interrupt(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 46, in _call_and_handle_interrupt
+    return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/launchers/subprocess_script.py", line 105, in launch
+    return function(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 679, in _validate_impl
+    results = self._run(model, ckpt_path=ckpt_path)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1018, in _run_stage
+    return self._evaluation_loop.run()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/utilities.py", line 178, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 135, in run
+    self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 396, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 319, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 411, in validation_step
+    return self.lightning_module.validation_step(*args, **kwargs)
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 319, in validation_step
+    out_dict = self.common_step(batch, batch_idx)
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 218, in common_step
+    #eval_ultr(batch=batch, pred_scores=logits, ips_model=self.ips_model, device=self.device)
+  File "/home/ec2-user/workspace/cf_rank/src/utils.py", line 429, in eval_ultr
+    prob_atleast_1click = 1 - prob_noclick
+  File "/home/ec2-user/workspace/cf_rank/src/utils.py", line 429, in eval_ultr
+    prob_atleast_1click = 1 - prob_noclick
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/bdb.py", line 88, in trace_dispatch
+    return self.dispatch_line(frame)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/bdb.py", line 113, in dispatch_line
+    if self.quitting: raise BdbQuit
+bdb.BdbQuit
+ERROR:root:An error occurred:
+Traceback (most recent call last):
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 237, in <module>
+    main(args)
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 199, in main
+    pyl_trainer.validate(trainer,test_dataloader)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 639, in validate
+    return call._call_and_handle_interrupt(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 46, in _call_and_handle_interrupt
+    return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/launchers/subprocess_script.py", line 105, in launch
+    return function(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 679, in _validate_impl
+    results = self._run(model, ckpt_path=ckpt_path)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1018, in _run_stage
+    return self._evaluation_loop.run()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/utilities.py", line 178, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 135, in run
+    self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 396, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 319, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 411, in validation_step
+    return self.lightning_module.validation_step(*args, **kwargs)
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 335, in validation_step
+    self.log("val_acc_prob_click", acc_ranker, prog_bar=True, sync_dist=True)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/core/module.py", line 525, in log
+    results.log(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/logger_connector/result.py", line 413, in log
+    batch_size = self._extract_batch_size(self[key], batch_size, meta)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/logger_connector/result.py", line 349, in _extract_batch_size
+    batch_size = extract_batch_size(self.batch)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/utilities/data.py", line 87, in extract_batch_size
+    raise MisconfigurationException(error_msg)
+lightning_fabric.utilities.exceptions.MisconfigurationException: We could not infer the batch_size from the batch. Either simplify its structure or provide the batch_size as `self.log(..., batch_size=batch_size)`.

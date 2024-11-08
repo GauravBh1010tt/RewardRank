@@ -1,0 +1,93 @@
+Logging: args  Namespace(lr=2e-05, batch_size=512, weight_decay=0.01, epochs=25, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models=None, lr_drop=15, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.9, soft_gain=0.02, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=2, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='rr_org_pre_soft', load_path='', load_path_reward='/home/ec2-user/workspace/outputs/sr_df/checkpoints/checkpoint30.pth', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=False, concat_feats=False, pretrain_ranker=True, merge_imgs=False, train_ranker=True, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=False, use_wandb=False, use_doc_feat=True, num_workers=4, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/rr_org_pre_soft/out.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', limit_train_batches=None, limit_val_batches=None, limit_test_batches=None, output_dir='/home/ec2-user/workspace/outputs/rr_org_pre_soft')
+
+ Resuming  reward _model from :  /home/ec2-user/workspace/outputs/sr_df/checkpoints/checkpoint30.pth
+Logging: args  Namespace(lr=2e-05, batch_size=512, weight_decay=0.01, epochs=25, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models=None, lr_drop=15, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.9, soft_gain=0.02, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=2, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='rr_org_pre_soft', load_path='', load_path_reward='/home/ec2-user/workspace/outputs/sr_df/checkpoints/checkpoint30.pth', load_path_ranker='/home/ec2-user/workspace/outputs/ranker_org_2e-5_log_concat/checkpoints/checkpoint30.pth', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=False, concat_feats=False, pretrain_ranker=True, merge_imgs=False, train_ranker=True, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=False, use_wandb=False, use_doc_feat=True, num_workers=4, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/rr_org_pre_soft/out.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', limit_train_batches=None, limit_val_batches=None, limit_test_batches=None, output_dir='/home/ec2-user/workspace/outputs/rr_org_pre_soft')
+
+ Resuming  reward _model from :  /home/ec2-user/workspace/outputs/sr_df/checkpoints/checkpoint30.pth
+
+ Resuming  arranger _model from :  /home/ec2-user/workspace/outputs/ranker_org_2e-5_log_concat/checkpoints/checkpoint30.pth
+Logging: args  Namespace(lr=2e-05, batch_size=512, weight_decay=0.01, epochs=25, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models=None, lr_drop=15, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.9, soft_gain=0.02, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=2, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='rr_org_pre_soft', load_path='', load_path_reward='/home/ec2-user/workspace/outputs/sr_df/checkpoints/checkpoint30.pth', load_path_ranker='/home/ec2-user/workspace/outputs/ranker_org_2e-5_log_concat/checkpoints/checkpoint20.pth', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=False, concat_feats=False, pretrain_ranker=True, merge_imgs=False, train_ranker=True, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=False, use_wandb=False, use_doc_feat=True, num_workers=4, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/rr_org_pre_soft/out.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', limit_train_batches=None, limit_val_batches=None, limit_test_batches=None, output_dir='/home/ec2-user/workspace/outputs/rr_org_pre_soft')
+
+ Resuming  reward _model from :  /home/ec2-user/workspace/outputs/sr_df/checkpoints/checkpoint30.pth
+
+ Resuming  arranger _model from :  /home/ec2-user/workspace/outputs/ranker_org_2e-5_log_concat/checkpoints/checkpoint20.pth
+Logging: args  Namespace(lr=2e-05, batch_size=512, weight_decay=0.01, epochs=25, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models=None, lr_drop=15, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.9, soft_gain=0.02, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=2, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='rr_org_pre_soft', load_path='', load_path_reward='/home/ec2-user/workspace/outputs/sr_df/checkpoints/checkpoint30.pth', load_path_ranker='/home/ec2-user/workspace/outputs/ranker_org_2e-5_log_noconcat/checkpoints/checkpoint20.pth', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=False, concat_feats=False, pretrain_ranker=True, merge_imgs=False, train_ranker=True, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=False, use_wandb=False, use_doc_feat=True, num_workers=4, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/rr_org_pre_soft/out.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', limit_train_batches=None, limit_val_batches=None, limit_test_batches=None, output_dir='/home/ec2-user/workspace/outputs/rr_org_pre_soft')
+
+ Resuming  reward _model from :  /home/ec2-user/workspace/outputs/sr_df/checkpoints/checkpoint30.pth
+
+ Resuming  arranger _model from :  /home/ec2-user/workspace/outputs/ranker_org_2e-5_log_noconcat/checkpoints/checkpoint20.pth
+Logging: args  Namespace(lr=2e-05, batch_size=512, weight_decay=0.01, epochs=25, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models=None, lr_drop=15, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.9, soft_gain=0.02, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=2, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='rr_org_pre_soft', load_path='', load_path_reward='/home/ec2-user/workspace/outputs/sr_df/checkpoints/checkpoint30.pth', load_path_ranker='/home/ec2-user/workspace/outputs/ranker_org_2e-5_log_nocat/checkpoints/checkpoint20.pth', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=False, concat_feats=False, pretrain_ranker=True, merge_imgs=False, train_ranker=True, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=False, use_wandb=False, use_doc_feat=True, num_workers=4, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/rr_org_pre_soft/out.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', limit_train_batches=None, limit_val_batches=None, limit_test_batches=None, output_dir='/home/ec2-user/workspace/outputs/rr_org_pre_soft')
+
+ Resuming  reward _model from :  /home/ec2-user/workspace/outputs/sr_df/checkpoints/checkpoint30.pth
+
+ Resuming  arranger _model from :  /home/ec2-user/workspace/outputs/ranker_org_2e-5_log_nocat/checkpoints/checkpoint20.pth
+
+ Val acc after  0  epochs :  57.350148168103445   loss :  0.7383210218158262
+
+ Train acc after  0  epochs :  58.667512233736325   loss :  0.7119307980224464
+
+ Val acc after  1  epochs :  57.43130387931034   loss :  0.81294164040993
+
+ Train acc after  1  epochs :  58.794459736614854   loss :  0.713377911638239
+
+ Val acc after  2  epochs :  57.4481411637931   loss :  0.8137103815530908
+
+ Train acc after  2  epochs :  58.82459430771445   loss :  0.7113230100430218
+
+ Val acc after  3  epochs :  57.40975215517241   loss :  0.8124804962297966
+
+ Train acc after  3  epochs :  58.923206318365   loss :  0.7145339824649611
+
+ Val acc after  4  epochs :  57.43130387931034   loss :  0.8132395098949301
+
+ Train acc after  4  epochs :  58.81335006476684   loss :  0.7121836241113776
+
+ Val acc after  5  epochs :  57.45083512931034   loss :  0.8137235871676741
+
+ Saving at epoch  5
+
+ Train acc after  5  epochs :  58.798170336787564   loss :  0.7135147962614113
+
+ Val acc after  6  epochs :  57.45218211206897   loss :  0.8136982976362623
+
+ Train acc after  6  epochs :  58.81020167674151   loss :  0.7119916985964185
+
+ Val acc after  7  epochs :  57.45016163793103   loss :  0.8136969820178789
+
+ Train acc after  7  epochs :  58.82616850172712   loss :  0.7119700902827388
+
+ Val acc after  8  epochs :  57.45083512931034   loss :  0.8137007878772143
+
+ Train acc after  8  epochs :  58.82661827144502   loss :  0.7135367366385035
+
+ Val acc after  9  epochs :  57.44982489224138   loss :  0.8137001752853393
+
+ Train acc after  9  epochs :  58.82639338658607   loss :  0.711487255291343
+
+ Val acc after  10  epochs :  57.45049838362069   loss :  0.8137058326910283
+
+ Saving at epoch  10
+
+ Train acc after  10  epochs :  58.753193364997124   loss :  0.7123578047711203
+
+ Val acc after  11  epochs :  57.45083512931034   loss :  0.8137008479956923
+
+ Train acc after  11  epochs :  58.80041918537709   loss :  0.7119335897983184
+
+ Val acc after  12  epochs :  57.451171875   loss :  0.8135971854472982
+
+ Train acc after  12  epochs :  58.80840259786989   loss :  0.7119057556645377
+
+ Val acc after  13  epochs :  57.44948814655172   loss :  0.8137040642828777
+
+ Train acc after  13  epochs :  58.769497517271155   loss :  0.7120165603560281
+
+ Val acc after  14  epochs :  57.44948814655172   loss :  0.8137029941739707
+
+ Train acc after  14  epochs :  58.7076541810593   loss :  0.7124416444860249
+
+ Val acc after  15  epochs :  57.45016163793103   loss :  0.8137031830590347
+
+ Saving at epoch  15
+
+ Train acc after  15  epochs :  58.80829015544042   loss :  0.7104869272150249

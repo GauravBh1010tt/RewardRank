@@ -1,0 +1,98 @@
+Logging: args  Namespace(lr=2e-05, batch_size=512, weight_decay=0.01, epochs=26, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models=None, lr_drop=18, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.8, soft_gain=0.05, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=1, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='demo', load_path='/home/ec2-user/workspace/outputs/ultr_ips_fix/checkpoints/checkpoint15.pth', load_path_reward='', load_path_ranker='', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=True, eval_ultr=False, ste=False, concat_feats=False, pretrain_ranker=False, merge_imgs=False, train_ranker=False, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=True, use_wandb=False, use_doc_feat=True, num_workers=0, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/demo/out_eval.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', frint_freq=10, limit_train_batches=50, limit_val_batches=50, limit_test_batches=50, output_dir='/home/ec2-user/workspace/outputs/demo')
+
+
+ Evaluating ...  None
+
+ Resuming  reward _model from :  /home/ec2-user/workspace/outputs/ultr_ips_fix/checkpoints/checkpoint15.pth
+
+ Val acc after  0  epochs :  62.6796875   loss :  0.6349760627746582
+Logging: args  Namespace(lr=2e-05, batch_size=3, weight_decay=0.01, epochs=26, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models='ips', lr_drop=18, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.8, soft_gain=0.05, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=1, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='demo', load_path='', load_path_reward='', load_path_ranker='', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=True, eval_ultr=False, ste=False, concat_feats=False, pretrain_ranker=False, merge_imgs=False, train_ranker=False, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=True, use_wandb=False, use_doc_feat=True, num_workers=0, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/demo/out_eval.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', frint_freq=10, limit_train_batches=4, limit_val_batches=4, limit_test_batches=4, output_dir='/home/ec2-user/workspace/outputs/demo')
+
+
+ Evaluating ...  None
+
+ Resuming  reward _model from :  
+Logging: args  Namespace(lr=2e-05, batch_size=3, weight_decay=0.01, epochs=26, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models='ips', lr_drop=18, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.8, soft_gain=0.05, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=1, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='demo', load_path='', load_path_reward='', load_path_ranker='', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=True, eval_ultr=False, ste=False, concat_feats=False, pretrain_ranker=False, merge_imgs=False, train_ranker=False, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=True, use_wandb=False, use_doc_feat=True, num_workers=0, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/demo/out_eval.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', frint_freq=10, limit_train_batches=4, limit_val_batches=4, limit_test_batches=4, output_dir='/home/ec2-user/workspace/outputs/demo')
+
+
+ Evaluating ...  None
+
+ Resuming  reward _model from :  
+Logging: args  Namespace(lr=2e-05, batch_size=3, weight_decay=0.01, epochs=26, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models='ips', lr_drop=18, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.8, soft_gain=0.05, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=1, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='demo', load_path='', load_path_reward='', load_path_ranker='', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=True, eval_ultr=False, ste=False, concat_feats=False, pretrain_ranker=False, merge_imgs=False, train_ranker=True, train_ranker_lambda=True, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=True, use_wandb=False, use_doc_feat=True, num_workers=0, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/demo/out_eval.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', frint_freq=10, limit_train_batches=4, limit_val_batches=4, limit_test_batches=4, output_dir='/home/ec2-user/workspace/outputs/demo')
+
+
+ Evaluating ...  None
+
+ Resuming  arranger _model from :  
+Logging: args  Namespace(lr=2e-05, batch_size=3, weight_decay=0.01, epochs=26, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models='ips', lr_drop=18, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.8, soft_gain=0.05, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=1, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='demo', load_path='', load_path_reward='', load_path_ranker='', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=True, eval_ultr=False, ste=False, concat_feats=False, pretrain_ranker=False, merge_imgs=False, train_ranker=True, train_ranker_lambda=True, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=True, use_wandb=False, use_doc_feat=True, num_workers=0, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/demo/out_eval.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', frint_freq=10, limit_train_batches=4, limit_val_batches=4, limit_test_batches=4, output_dir='/home/ec2-user/workspace/outputs/demo')
+
+
+ Evaluating ...  None
+
+ Resuming  arranger _model from :  
+Logging: args  Namespace(lr=2e-05, batch_size=3, weight_decay=0.01, epochs=26, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models='ips', lr_drop=18, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.8, soft_gain=0.05, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=1, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='demo', load_path='', load_path_reward='', load_path_ranker='', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=True, eval_ultr=False, ste=False, concat_feats=False, pretrain_ranker=False, merge_imgs=False, train_ranker=True, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=True, use_wandb=False, use_rax=False, use_doc_feat=True, num_workers=0, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/demo/out_eval.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', frint_freq=10, limit_train_batches=4, limit_val_batches=4, limit_test_batches=4, output_dir='/home/ec2-user/workspace/outputs/demo')
+
+ Resuming  reward _model from :  
+
+
+ Evaluating ...  None
+
+ Resuming  reward _model from :  
+Logging: args  Namespace(lr=2e-05, batch_size=3, weight_decay=0.01, epochs=26, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models='ips', lr_drop=18, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.8, soft_gain=0.05, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=1, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='demo', load_path='', load_path_reward='', load_path_ranker='', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=True, eval_ultr=False, ste=False, concat_feats=False, pretrain_ranker=False, merge_imgs=False, train_ranker=True, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=True, use_wandb=False, use_rax=False, use_doc_feat=True, num_workers=0, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/demo/out_eval.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', frint_freq=10, limit_train_batches=4, limit_val_batches=4, limit_test_batches=4, output_dir='/home/ec2-user/workspace/outputs/demo')
+
+ Resuming  reward _model from :  
+
+
+ Evaluating ...  None
+
+ Resuming  reward _model from :  
+Logging: args  Namespace(lr=2e-05, batch_size=3, weight_decay=0.01, epochs=26, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models='ips', lr_drop=18, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.8, soft_gain=0.05, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=1, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='demo', load_path='', load_path_reward='', load_path_ranker='', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=True, eval_ultr=True, ste=False, concat_feats=False, pretrain_ranker=False, merge_imgs=False, train_ranker=True, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=True, use_wandb=False, use_rax=False, use_doc_feat=True, num_workers=0, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/demo/out_eval.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', frint_freq=10, limit_train_batches=4, limit_val_batches=4, limit_test_batches=4, output_dir='/home/ec2-user/workspace/outputs/demo')
+
+ Resuming  reward _model from :  
+
+
+ Evaluating ...  None
+
+ Resuming  reward _model from :  
+Logging: args  Namespace(lr=2e-05, batch_size=3, weight_decay=0.01, epochs=26, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models='ips', lr_drop=18, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.8, soft_gain=0.05, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=1, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='demo', load_path='', load_path_reward='', load_path_ranker='', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=True, eval_ultr=True, ste=False, concat_feats=False, pretrain_ranker=False, merge_imgs=False, train_ranker=True, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=True, use_wandb=False, use_rax=False, use_doc_feat=True, num_workers=0, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/demo/out_eval.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', frint_freq=10, limit_train_batches=4, limit_val_batches=4, limit_test_batches=4, output_dir='/home/ec2-user/workspace/outputs/demo')
+
+ Resuming  reward _model from :  
+
+
+ Evaluating ...  None
+
+ Resuming  reward _model from :  
+Logging: args  Namespace(lr=2e-05, batch_size=3, weight_decay=0.01, epochs=26, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models='ips', lr_drop=18, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.8, soft_gain=0.05, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=1, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='demo', load_path='', load_path_reward='', load_path_ranker='', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=True, eval_ultr=True, ste=False, concat_feats=False, pretrain_ranker=False, merge_imgs=False, train_ranker=True, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=True, use_wandb=False, use_rax=False, use_doc_feat=True, num_workers=0, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/demo/out_eval.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', frint_freq=10, limit_train_batches=4, limit_val_batches=4, limit_test_batches=4, output_dir='/home/ec2-user/workspace/outputs/demo')
+
+ Resuming  reward _model from :  
+
+
+ Evaluating ...  None
+
+ Resuming  reward _model from :  
+Logging: args  Namespace(lr=2e-05, batch_size=3, weight_decay=0.01, epochs=26, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models='ips', lr_drop=18, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.8, soft_gain=0.05, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=1, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='demo', load_path='', load_path_reward='', load_path_ranker='', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=True, eval_ultr=True, ste=False, concat_feats=False, pretrain_ranker=False, merge_imgs=False, train_ranker=True, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=True, use_wandb=False, use_rax=False, use_doc_feat=True, num_workers=0, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/demo/out_eval.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', frint_freq=10, limit_train_batches=4, limit_val_batches=4, limit_test_batches=4, output_dir='/home/ec2-user/workspace/outputs/demo')
+
+ Resuming  reward _model from :  
+
+
+ Evaluating ...  None
+
+ Resuming  reward _model from :  
+Logging: args  Namespace(lr=2e-05, batch_size=3, weight_decay=0.01, epochs=26, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models='ips', lr_drop=18, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.8, soft_gain=0.05, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=1, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='demo', load_path='', load_path_reward='/home/ec2-user/workspace/outputs/ultr_ips_fix_new/checkpoints/checkpoint25.pth', load_path_ranker='/home/ec2-user/workspace/outputs/ranker_ips_fix_new/checkpoints/checkpoint25.pth', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=True, eval_ultr=True, ste=False, concat_feats=False, pretrain_ranker=False, merge_imgs=False, train_ranker=True, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=True, use_wandb=False, use_rax=False, use_doc_feat=True, num_workers=0, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/demo/out_eval.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', frint_freq=10, limit_train_batches=4, limit_val_batches=4, limit_test_batches=4, output_dir='/home/ec2-user/workspace/outputs/demo')
+
+ Resuming  reward _model from :  /home/ec2-user/workspace/outputs/ultr_ips_fix_new/checkpoints/checkpoint25.pth
+
+ Resuming  arranger _model from :  /home/ec2-user/workspace/outputs/ranker_ips_fix_new/checkpoints/checkpoint25.pth
+
+
+ Evaluating ...  None
+
+ Resuming  reward _model from :  
+Logging: args  Namespace(lr=2e-05, batch_size=3, weight_decay=0.01, epochs=26, eval_epochs=1, use_model_preds=1, print_freq=500, max_positions_PE=50, max_items_QG=21, repo_name='philipphager/baidu-ultr_uva-mlm-ctr', perturbation_sampling=False, sampling_type='rand_perturb', ultr_models='ips', lr_drop=18, save_epochs=5, delta_retain=0.5, soft_labels=False, soft_base=0.8, soft_gain=0.05, lr_drop_epochs=None, clip_max_norm=0.1, n_gpus=1, problem_type='classification', save_fname=None, output_path='/home/ec2-user/workspace/outputs/', data_path='/home/ec2-user/workspace/data/custom_click', output_folder='demo', load_path='/home/ec2-user/workspace/outputs/rr_ips_soft_pre/checkpoints/checkpoint15.pth', load_path_reward='', load_path_ranker='', device='cuda', seed=42, n_viz=0, resume=0, start_epoch=0, eval=True, eval_ultr=True, ste=False, concat_feats=False, pretrain_ranker=False, merge_imgs=False, train_ranker=True, train_ranker_lambda=False, eval_rels=False, force_tnse=False, use_dcg=False, save_cls=False, debug=True, use_wandb=False, use_rax=False, use_doc_feat=True, num_workers=0, log_file=<_io.TextIOWrapper name='/home/ec2-user/workspace/outputs/demo/out_eval.log' mode='a' encoding='UTF-8'>, wandb_project_name='ranking', frint_freq=10, limit_train_batches=4, limit_val_batches=4, limit_test_batches=4, output_dir='/home/ec2-user/workspace/outputs/demo')
+
+ Resuming  arranger _model from :  /home/ec2-user/workspace/outputs/rr_ips_soft_pre/checkpoints/checkpoint15.pth
+
+
+ Evaluating ...  None
+
+ Resuming  reward _model from :  /home/ec2-user/workspace/outputs/rr_ips_soft_pre/checkpoints/checkpoint15.pth

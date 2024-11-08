@@ -1,0 +1,108 @@
+ERROR:root:An error occurred:
+jax.errors.SimplifiedTraceback: For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 237, in <module>
+    main(args)
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 199, in main
+    pyl_trainer.validate(trainer,test_dataloader)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 639, in validate
+    return call._call_and_handle_interrupt(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 46, in _call_and_handle_interrupt
+    return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/launchers/subprocess_script.py", line 105, in launch
+    return function(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 679, in _validate_impl
+    results = self._run(model, ckpt_path=ckpt_path)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1018, in _run_stage
+    return self._evaluation_loop.run()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/utilities.py", line 178, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 135, in run
+    self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 396, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 319, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 411, in validation_step
+    return self.lightning_module.validation_step(*args, **kwargs)
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 332, in validation_step
+    acc_ranker = eval_ultr(batch=batch, pred_scores=out_dict['ranker']['logits'],
+  File "/home/ec2-user/workspace/cf_rank/src/utils.py", line 417, in eval_ultr
+    out_c = ips_model(new_batch)
+  File "/home/ec2-user/workspace/cf_rank/bbm/src/model/base.py", line 99, in __call__
+    return self.module.apply(
+  File "/home/ec2-user/workspace/cf_rank/bbm/src/model/ips.py", line 59, in __call__
+    cross_encoder_output = super().__call__(batch, train, **kwargs)
+  File "/home/ec2-user/workspace/cf_rank/bbm/src/model/cross_encoder.py", line 37, in __call__
+    outputs = self.bert(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/transformers/models/bert/modeling_flax_bert.py", line 996, in __call__
+    outputs = self.encoder(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/transformers/models/bert/modeling_flax_bert.py", line 655, in __call__
+    return self.layer(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/transformers/models/bert/modeling_flax_bert.py", line 595, in __call__
+    layer_outputs = layer(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/transformers/models/bert/modeling_flax_bert.py", line 515, in __call__
+    attention_outputs = self.attention(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/transformers/models/bert/modeling_flax_bert.py", line 434, in __call__
+    attn_outputs = self.self(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/transformers/models/bert/modeling_flax_bert.py", line 369, in __call__
+    attn_weights = dot_product_attention_weights(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/flax/linen/attention.py", line 110, in dot_product_attention_weights
+    attn_weights = jnp.einsum(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/jax/_src/numpy/lax_numpy.py", line 5189, in einsum
+    return einsum(operands, contractions, precision,
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/contextlib.py", line 79, in inner
+    return func(*args, **kwds)
+jaxlib.xla_extension.XlaRuntimeError: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 6459228160 bytes.
+ERROR:root:An error occurred:
+jax.errors.SimplifiedTraceback: For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 237, in <module>
+    main(args)
+  File "/home/ec2-user/workspace/cf_rank/main.py", line 199, in main
+    pyl_trainer.validate(trainer,test_dataloader)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 639, in validate
+    return call._call_and_handle_interrupt(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 46, in _call_and_handle_interrupt
+    return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/launchers/subprocess_script.py", line 105, in launch
+    return function(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 679, in _validate_impl
+    results = self._run(model, ckpt_path=ckpt_path)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/trainer.py", line 1018, in _run_stage
+    return self._evaluation_loop.run()
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/utilities.py", line 178, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 135, in run
+    self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 396, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/trainer/call.py", line 319, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/pytorch_lightning/strategies/strategy.py", line 411, in validation_step
+    return self.lightning_module.validation_step(*args, **kwargs)
+  File "/home/ec2-user/workspace/cf_rank/engine.py", line 332, in validation_step
+    acc_ranker = eval_ultr(batch=batch, pred_scores=out_dict['ranker']['logits'],
+  File "/home/ec2-user/workspace/cf_rank/src/utils.py", line 417, in eval_ultr
+    out_c = ips_model(new_batch)
+  File "/home/ec2-user/workspace/cf_rank/bbm/src/model/base.py", line 99, in __call__
+    return self.module.apply(
+  File "/home/ec2-user/workspace/cf_rank/bbm/src/model/ips.py", line 59, in __call__
+    cross_encoder_output = super().__call__(batch, train, **kwargs)
+  File "/home/ec2-user/workspace/cf_rank/bbm/src/model/cross_encoder.py", line 53, in __call__
+    logits = self.mlm_head(
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/transformers/models/bert/modeling_flax_bert.py", line 715, in __call__
+    hidden_states = self.decoder.apply({"params": {"kernel": shared_embedding.T}}, hidden_states)
+  File "/home/ec2-user/anaconda3/envs/rank3/lib/python3.9/site-packages/flax/linen/linear.py", line 276, in __call__
+    y = dot_general(
+jaxlib.xla_extension.XlaRuntimeError: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 23085449216 bytes.
