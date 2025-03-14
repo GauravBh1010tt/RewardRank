@@ -21,7 +21,7 @@ from scipy.interpolate import make_interp_spline
 from scipy.ndimage.filters import gaussian_filter1d
 from transformers.models.bert.configuration_bert import BertConfig
 from src.ultr_models import infer_ultr
-from src.losses import PiRank_Loss, neuralNDCG
+from src.losses import PiRank_Loss
 from src.loss_utils import hard_sort_group_parallel as hard_sort
 
 # from bbm.src.model import CrossEncoder, IPSCrossEncoder, PBMCrossEncoder
@@ -29,7 +29,8 @@ from src.loss_utils import hard_sort_group_parallel as hard_sort
 # from bbm.src.model import CrossEncoder
 
 from src.utils import sample_without_replacement_with_prob as sample_perturb, sample_swap, distance_prob, soft_sort_group_parallel as soft_sort
-from src.utils import eval_ultr, get_ndcg, binary_accuracy, merge_images
+from src.utils import eval_ultr, get_ndcg, binary_accuracy, merge_images, loss_urcc, eval_ultr_ideal
+from src.pg_rank import compute_pg_rank_loss
 
 class local_trainer(pl.LightningModule):
 	def __init__(self, train_loader, val_loader, test_dataset, args, eval_mode=False):
@@ -43,7 +44,10 @@ class local_trainer(pl.LightningModule):
 		self.config.problem_type = args.problem_type
 		self.config.max_position_embeddings = args.max_positions_PE
 		self.config.use_word_embed = False
-
+		self.config.per_item_feats = args.per_item_feats
+		self.config.concat_feats = self.args.concat_feats
+		self.config.choice2 = args.choice2
+  		
 		if args.use_doc_feat:
 		# 	self.config.doc_feat_len=0
 			self.config.hidden_size+=12
@@ -55,7 +59,6 @@ class local_trainer(pl.LightningModule):
 		if args.train_ranker:
 			self.config.use_pos_embed = False
 			#self.config.num_labels = args.max_items_QG # max_items in QGs
-			self.config.concat_feats = self.args.concat_feats
 			self.arranger = BertArranger(self.config)
 			#print('\nLoading reward model ...\n')
 			if args.train_ranker_lambda or args.eval:
@@ -111,11 +114,17 @@ class local_trainer(pl.LightningModule):
 			click = torch.tensor(batch['label']).to(self.device)
 		else:
 			click = torch.tensor(batch['click']).to(self.device)
-			pos_idx = torch.tensor(batch['position']).to(self.device)
+   
+			if self.args.choice2:
+				pos_idx = torch.tensor(batch['position']).to(self.device)
+			else:
+				pos_idx = 1 + torch.arange(batch['position'].shape[1]).repeat(batch['position'].shape[0],1).to(self.device)
 
 			if self.args.ultr_models:
-				#pdb.set_trace()
-				examination = torch.tensor(batch['examination_'+self.args.ultr_models]).to(self.device)
+				if self.args.choice2:
+					examination = torch.tensor(batch['examination_'+self.args.ultr_models]).to(self.device)
+				else:
+					examination = infer_ultr(pos_idx=pos_idx, device=self.device)
 				relevance = torch.tensor(batch['relevance_'+self.args.ultr_models]).to(self.device)
 
 		if self.args.perturbation_sampling and self.args.eval:
@@ -169,14 +178,18 @@ class local_trainer(pl.LightningModule):
 			
 			feat = torch.cat([feat,doc_feats], dim=2) #TODO: Pass doc_feats through MLP before concat
 
-		#TODO: fix dummy index
-
 		#pdb.set_trace()
 
 		out_dict = defaultdict(lambda: {})
 
+		if self.args.ultr_models and not self.args.eval_rels:
+			labels_per_item = prob_click
+		else:
+			labels_per_item = click
+
 		if self.args.train_ranker:
-			#pdb.set_trace()
+			
+			#TODO:fix padding using attention masking
 			out_dict = self.arranger(inputs_embeds=feat, doc_feats=doc_feats, attention_mask=doc_mask)
 			#pdb.set_trace()
 			#logits = torch.sigmoid(out_dict['logits'])
@@ -200,6 +213,23 @@ class local_trainer(pl.LightningModule):
 			if self.args.train_ranker_lambda:
 				#loss_fn = neuralNDCG
 				loss = loss_fn(logits, labels.float(), device=self.device, dummy_indices=mask_padded)
+			
+			if self.args.urcc_loss:
+				loss = loss_urcc(logits, labels.float(), device=self.device, mask = mask_padded, reward_mod=self.reward_model,
+					 			inputs_embeds=feat, position_ids=pos_idx, doc_feats=doc_feats, 
+						   		labels_click = labels_per_item, attention_mask=doc_mask, avg_lables=avg_click)
+			
+			if self.args.pgrank_loss:
+				if not self.args.pgrank_disc:
+					loss = compute_pg_rank_loss(scores=logits, targets=labels, args=self.args, 
+    	                            mask=mask_padded, device=self.device)
+				else:
+					loss = compute_pg_rank_loss(scores=logits, targets=labels, args=self.args, 
+    	                            mask=mask_padded, device=self.device, reward_mod=self.reward_model,
+					 			inputs_embeds=feat, position_ids=pos_idx, doc_feats=doc_feats, 
+						   		labels_click = labels_per_item, attention_mask=doc_mask)
+				
+			if self.args.pgrank_loss or self.args.urcc_loss or self.args.train_ranker_lambda:
 				out_dict['ranker'] = {'loss':loss.mean(),'logits':logits,'labels':labels, 'cls_token':cls_token_arranger}
 				return out_dict
 			
@@ -212,14 +242,24 @@ class local_trainer(pl.LightningModule):
 
 			#pdb.set_trace()
 			ranker_loss = loss_fn(logits, labels.float(), device=self.device, dummy_indices=mask_padded)
+			#pdb.set_trace()
+			pos_emb_reward = self.reward_model.bert.embeddings.position_embeddings.weight
+			pos_emb_reward = pos_emb_reward[1:p_hat.shape[-1]+1,:]
+			soft_pos_mat = torch.matmul(p_hat.permute(0,2,1), pos_emb_reward) # current policy
+			factual_perm_mat = self.reward_model.bert.embeddings.position_embeddings(pos_idx) # production policy
+
+			soft_perm_loss = torch.norm(soft_pos_mat-factual_perm_mat, p=2) # computing soft permutation loss between the production policy and current policy
 
 			out = self.reward_model(inputs_embeds=feat, soft_position_ids=p_hat, labels=avg_click, doc_feats=doc_feats, attention_mask=doc_mask)
-			out_dict['ranker'] = {'loss':ranker_loss.mean(),'logits':logits,'labels':labels, 'cls_token':cls_token_arranger}
+			out_dict['ranker'] = {'loss':ranker_loss.mean(),'logits':logits,'labels':labels, 'cls_token':cls_token_arranger, 'soft_perm_loss':soft_perm_loss}
 		else:
-			out = self.reward_model(inputs_embeds=feat, position_ids=pos_idx, labels=avg_click, doc_feats=doc_feats, attention_mask=doc_mask)
+
+			out = self.reward_model(inputs_embeds=feat, position_ids=pos_idx, labels=avg_click, doc_feats=doc_feats, 
+						   labels_click = labels_per_item, attention_mask=doc_mask)
 		
 		#eval_ultr(batch=batch, pred_scores=logits, ips_model=self.ips_model, device=self.device)
-		out_dict['reward'] = {'loss':out['loss'],'logits':out['logits'],'labels':avg_click, 'cls_token':out['cls_token']}
+		out_dict['reward'] = {'loss':out['loss'],'logits':out['logits'],'labels':avg_click, 'cls_token':out['cls_token'], 
+						'logits_per_item': out['per_item_logits'], 'loss_per_item': out['per_item_loss']}
 
 		return out_dict
 	
@@ -227,6 +267,7 @@ class local_trainer(pl.LightningModule):
 	def training_step(self, batch, batch_idx): # automatic training schedule
 		
 		out_dict = self.common_step(batch, batch_idx)
+		mask = 1.0*torch.tensor(batch['mask']).to(self.device)
 
 		use_soft=False
 
@@ -234,19 +275,21 @@ class local_trainer(pl.LightningModule):
 			use_soft=True
 
 		if self.args.train_ranker:
-			acc_ranker = get_ndcg(out_dict['ranker']['logits'].detach().cpu(), out_dict['ranker']['labels'].detach().cpu(), return_dcg=self.args.use_dcg)
+			acc_ranker = get_ndcg(out_dict['ranker']['logits'].detach().cpu(), out_dict['ranker']['labels'].detach().cpu(), 
+									args=self.args, mask=mask.detach().cpu())
 			
 			self.log("tr_loss_ranker", out_dict['ranker']['loss'], prog_bar=True, sync_dist=True)
 			self.log("tr_acc_ranker", acc_ranker, prog_bar=True, sync_dist=True)
+   
+			if self.args.use_wandb and self.trainer.global_rank==0:
+				wandb.log({"tr_loss_ranker":out_dict['ranker']['loss'], "tr_acc_ranker":acc_ranker})
 
-			if not self.args.train_ranker_lambda:
-			# 	acc_reward = binary_accuracy(out_dict['reward']['logits'].squeeze(), out_dict['reward']['labels'].squeeze(), soft=use_soft)
-			# 	self.log("tr_acc_reward", acc_reward, prog_bar=True, sync_dist=True)
-			# 	self.log("tr_loss_reward", out_dict['reward']['loss'], prog_bar=True, sync_dist=True)
 
-			# 	return out_dict['reward']['loss']
-			
-			# return out_dict['ranker']['loss']
+			if not self.args.train_ranker_lambda: # reward-arranger training schedule
+
+				if self.args.urcc_loss or self.args.pgrank_loss:
+					return out_dict['ranker']['loss'] # return urcc loss without the reward model's loss
+
 				if not self.args.ultr_models:
 					acc_reward = binary_accuracy(out_dict['reward']['logits'].squeeze(), out_dict['reward']['labels'].squeeze(), soft=use_soft)
 					#self.val_acc['0.5_thres'] += acc_reward
@@ -255,26 +298,33 @@ class local_trainer(pl.LightningModule):
 					prob1 = torch.stack([1-torch.sigmoid(out_dict['reward']['logits'].squeeze()), torch.sigmoid(out_dict['reward']['logits'].squeeze())], dim=1) # batch x 2
 					prob2 = torch.stack([1-out_dict['reward']['labels'], out_dict['reward']['labels']], dim=1)
 
-					#pdb.set_trace()
-					#for i in ['tv']:
 					tv_reward = distance_prob(prob1, prob2, distance_type="tv")
 					self.val_acc['tv'] += tv_reward
 					self.log("tr_TV_reward", tv_reward, prog_bar=True, sync_dist=True, batch_size=1)
 
-				self.log("tr_loss_reward", out_dict['reward']['loss'], prog_bar=True, sync_dist=True)
+				loss_reward = -self.args.reward_loss_reg * torch.sigmoid(out_dict['reward']['logits']).mean() # maximising the utility of reward model
+
+				self.log("tr_loss_reward", loss_reward, prog_bar=True, sync_dist=True)
+				
+				if self.args.use_wandb and self.trainer.global_rank==0:
+					wandb.log({"tr_loss_reward":loss_reward})
+
+				if self.args.use_soft_perm_loss:
+					loss_reward += self.args.soft_perm_loss_reg * out_dict['ranker']['soft_perm_loss']
+					self.log("tr_loss_soft_perm", out_dict['ranker']['soft_perm_loss'], prog_bar=True, sync_dist=True)
 				
 				if self.args.cls_reg:
 
 					cls_loss = nn.MSELoss()
 
 					loss_cls = self.args.cls_reg_lr * cls_loss(out_dict['reward']['cls_token'], out_dict['ranker']['cls_token'])
-					loss = out_dict['reward']['loss'] + loss_cls
+					#loss = out_dict['reward']['loss'] + loss_cls # using factual labels is like cheating
+					loss_reward = loss_reward + loss_cls
 					self.log("tr_loss_cls", loss_cls, prog_bar=True, sync_dist=True, batch_size=1)
-				else:
-					loss = out_dict['reward']['loss']
-				return loss
+					
+				return loss_reward
 			
-			return out_dict['ranker']['loss']
+			return out_dict['ranker']['loss'] # naive ranker training loss 
 		else:
 			#acc_reward = binary_accuracy(out_dict['reward']['logits'].squeeze(), out_dict['reward']['labels'].squeeze(), soft=use_soft)
 			self.log("tr_loss_reward", out_dict['reward']['loss'], prog_bar=True, sync_dist=True)
@@ -291,20 +341,14 @@ class local_trainer(pl.LightningModule):
 				#self.val_acc['tv'] += tv_reward
 				self.log("tr_TV_reward", tv_reward, prog_bar=True, sync_dist=True, batch_size=1)
 
-			return out_dict['reward']['loss']
+			loss_reward = out_dict['reward']['loss'] # cls_loss
 
-		#pdb.set_trace()
+			if self.config.per_item_feats:
+				#pdb.set_trace()
+				loss_reward += out_dict['reward']['loss_per_item'].squeeze()
 
-		#wandb_out = {"tr_loss": loss, "tr_acc":acc}
-
-		# self.tr_acc += float(acc)
-		# self.tr_loss += float(loss)
-
-	# def on_after_backward(self):
-	# 	self.arranger.classifier.weight.grad[self.batch_max_items:,:] = 0.0
-	# 	self.arranger.classifier.bias.grad[self.batch_max_items:] = 0.0
-		#pdb.set_trace()
-
+			return loss_reward
+		
 	def on_train_epoch_end(self):
 
 		# tr_acc_avg = self.tr_acc/self.trainer.num_training_batches
@@ -330,6 +374,7 @@ class local_trainer(pl.LightningModule):
 	def validation_step(self, batch, batch_idx):
 		
 		out_dict = self.common_step(batch, batch_idx)
+		mask = 1.0*torch.tensor(batch['mask']).to(self.device)
 		#loss = out_dict['loss']
 		#logits = out_dict['logits']
 
@@ -342,21 +387,35 @@ class local_trainer(pl.LightningModule):
 			use_soft=True
 
 		if self.args.eval_ultr:
-			acc_ranker = eval_ultr(batch=batch, pred_scores=out_dict['ranker']['logits'],
-							device=self.device)
+			if self.args.choice_ideal:
+				acc_ranker, rel_ndcg = eval_ultr_ideal(batch=batch, device=self.device, args=self.args)
+			else:
+				acc_ranker, rel_ndcg = eval_ultr(batch=batch, pred_scores=out_dict['ranker']['logits'],
+								device=self.device, args=self.args)
 			self.val_acc['prob_atleast_1click'] += acc_ranker
+			self.val_acc['rel_ndcg'] += rel_ndcg
 			self.log("val_acc_prob_click", acc_ranker, prog_bar=True, sync_dist=True, batch_size=1)
+			self.log("val_acc_rel_ndcg", rel_ndcg, prog_bar=True, sync_dist=True, batch_size=1)
 		else:
 			if self.args.train_ranker:
+       
+				# if self.args.urcc_loss:
+				# 	return
 				
 				acc_ranker = get_ndcg(out_dict['ranker']['logits'].detach().cpu(), out_dict['ranker']['labels'].detach().cpu(), 
-						return_dcg=self.args.use_dcg, mask=batch['mask']*1, use_rax=self.args.use_rax) # mask will be used for RAX. automatically fixed for torchmetrics
+						mask=mask.detach().cpu(), args=self.args) # mask will be used for RAX. automatically fixed for torchmetrics
 				
 				self.val_acc['ndcg'] += acc_ranker
 				self.val_loss['ranker'] += out_dict['ranker']['loss']
 
 				self.log("val_loss_ranker", out_dict['ranker']['loss'], prog_bar=True, sync_dist=True,  batch_size=1)
 				self.log("val_acc_ndcg_ranker", acc_ranker, prog_bar=True, sync_dist=True,  batch_size=1)
+
+				if self.args.use_wandb and self.trainer.global_rank==0:
+					wandb.log({"val_loss_ranker":out_dict['ranker']['loss'], "val_acc_ranker":acc_ranker})
+
+				if self.args.urcc_loss or self.args.pgrank_loss:
+					return
 
 				if not self.args.train_ranker_lambda:
 					# acc_reward = binary_accuracy(out_dict['reward']['logits'].squeeze(), out_dict['reward']['labels'].squeeze(), soft=use_soft)
@@ -378,10 +437,17 @@ class local_trainer(pl.LightningModule):
 						self.log("val_TV_reward", tv_reward, prog_bar=True, sync_dist=True, batch_size=1)
 						
 						
-						acc_ranker = eval_ultr(batch=batch, pred_scores=out_dict['ranker']['logits'],
-							 					device=self.device)
+						if self.args.choice2:
+							acc_ranker, rel_ndcg = eval_ultr_choice2(batch=batch, pred_scores=out_dict['ranker']['logits'],
+										device=self.device, args=self.args)
+						else:
+							acc_ranker, rel_ndcg = eval_ultr(batch=batch, pred_scores=out_dict['ranker']['logits'],
+											device=self.device, args=self.args)
+
 						self.val_acc['prob_atleast_1click'] += acc_ranker
+						self.val_acc['rel_ndcg'] += rel_ndcg
 						self.log("val_acc_prob_click", acc_ranker, prog_bar=True, sync_dist=True, batch_size=1)
+						self.log("val_acc_rel_ndcg", rel_ndcg, prog_bar=True, sync_dist=True, batch_size=1)
 					
 					self.log("val_loss_reward", out_dict['reward']['loss'], prog_bar=True, sync_dist=True, batch_size=1)
 			else:
@@ -499,7 +565,7 @@ class local_trainer(pl.LightningModule):
 
 				if self.args.train_ranker:
 					for id, (name, params) in enumerate(self.reward_model.named_parameters()):
-						params.requires_grad = False
+						params.requires_grad = False #TODO: check torch.no_grad
 			else:
 				missing_keys, unexpected_keys = self.arranger.load_state_dict(checkpoint['model'], strict=False)
 

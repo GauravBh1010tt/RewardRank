@@ -95,7 +95,12 @@ class BertEmbeddings(nn.Module):
             else:
                 #pdb.set_trace()
                 phat_mat = soft_position_ids
-                pos_emb_mat = self.position_embeddings.weight[1:phat_mat.shape[-1]+1,:] # remove the 1st row as it is reserved for padded index
+                
+                if self.config.choice2:
+                    pos_emb_mat = self.position_embeddings(position_ids)
+                else:
+                    pos_emb_mat = self.position_embeddings.weight[1:phat_mat.shape[-1]+1,:] # remove the 1st row as it is reserved for padded index
+                    
                 soft_pos_mat = torch.matmul(phat_mat.permute(0,2,1), pos_emb_mat) # permute p_hat to ensure positions are multiplied with position_embedding_matrix
                 position_embeddings = soft_pos_mat #TODO:linear combination of items instead of positions
             embeddings += position_embeddings
@@ -443,7 +448,14 @@ class BertReward(BertPreTrainedModel):
         )
         self.dropout = nn.Dropout(classifier_dropout)
         #self.doc_feat_transform = nn.Linear(config.hidden_size, config.num_labels)
+
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
+
+        if config.per_item_feats:
+            if config.concat_feats:
+                self.classifier_per_items = nn.Linear(config.hidden_size*2, 1)
+            else:
+                self.classifier_per_items = nn.Linear(config.hidden_size, 1)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -459,6 +471,7 @@ class BertReward(BertPreTrainedModel):
         doc_feats: Optional[torch.Tensor] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
         labels: Optional[torch.Tensor] = None,
+        labels_click: Optional[torch.Tensor] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
@@ -516,6 +529,19 @@ class BertReward(BertPreTrainedModel):
         if not return_dict:
             output = (logits,) + outputs[2:]
             return ((loss,) + output) if loss is not None else output
+
+        per_item_logits = []
+        per_item_loss = torch.tensor([0.0], requires_grad=True).to(item_feats.device)
+
+        if self.config.per_item_feats:
+            loss_fct = BCEWithLogitsLoss()
+            for i in range(item_feats.shape[1]):
+                pooled_output = self.dropout(item_feats[:,i,:])
+                per_item_logits.append(self.classifier_per_items(pooled_output))
+                #pdb.set_trace()
+                loss_item = loss_fct(torch.sigmoid(per_item_logits[-1]).squeeze(), labels_click[:,i].float()) #TODO: verify if this is correct
+
+                per_item_loss += loss_item
         
         out_dict={
             'loss':loss,
@@ -523,6 +549,8 @@ class BertReward(BertPreTrainedModel):
             'hidden_states':outputs.hidden_states,
             'attentions':outputs.attentions,
             'cls_token':pooled_output,
+            'per_item_logits':per_item_logits,
+            'per_item_loss':per_item_loss,
         }
 
         return out_dict

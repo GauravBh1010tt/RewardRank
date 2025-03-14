@@ -19,9 +19,9 @@ def get_args_parser():
     parser.add_argument('--lr', default=2e-4, type=float)
     parser.add_argument('--batch_size', default=24, type=int)
     parser.add_argument('--split', default='train', choices=['train','test','ann'])
-    parser.add_argument('--data_root',default='/home/ec2-user/.cache/huggingface/philipphager___baidu-ultr_baidu-mlm-ctr/clicks/0.1.0/de47677224a1f47590a60a5ffca5ea84f1b105020620c07694cee02566ce4218/')
+    parser.add_argument('--data_root',default='/ubc/cs/home/g/gbhatt/borg/ranking/data/philipphager___baidu-ultr_uva-mlm-ctr/clicks/0.1.0/60cc071890b9bcc27adbfc78a642f1fa5d1668d90fadbe5b9fedcf3cd37bc89f/')
     parser.add_argument('--part', default=0, type=int)
-    parser.add_argument('--out_dir', default='/home/ec2-user/workspace/data/custom_click', type=str)
+    parser.add_argument('--out_dir', default='/ubc/cs/home/g/gbhatt/borg/ranking/data/custom_click', type=str)
     parser.add_argument('--model', default='naive-pointwise', choices=['naive-pointwise', 
                                                                       'naive-listwise', 'pbm', 'dla', 
                                                                       'ips-pointwise', 'ips-listwise'])

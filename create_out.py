@@ -17,9 +17,9 @@ from collections import defaultdict
 def get_args_parser():
     parser = argparse.ArgumentParser('Deformable DETR Detector', add_help=False)
     parser.add_argument('--lr', default=2e-4, type=float)
-    parser.add_argument('--batch_size', default=24, type=int)
+    parser.add_argument('--batch_size', default=12, type=int)
     parser.add_argument('--split', default='train', choices=['train','test','ann'])
-    parser.add_argument('--data_root',default='/home/ec2-user/.cache/huggingface/philipphager___baidu-ultr_baidu-mlm-ctr/clicks/0.1.0/de47677224a1f47590a60a5ffca5ea84f1b105020620c07694cee02566ce4218/')
+    parser.add_argument('--data_root',default='/home/ec2-user/.cache/huggingface/philipphager___baidu-ultr_uva-mlm-ctr/clicks/0.1.0/de47677224a1f47590a60a5ffca5ea84f1b105020620c07694cee02566ce4218/')
     parser.add_argument('--part', default=0, type=int)
     parser.add_argument('--out_dir', default='/home/ec2-user/workspace/data/custom_click_new', type=str)
     parser.add_argument('--model', default='naive-pointwise', choices=['naive-pointwise', 
@@ -52,15 +52,18 @@ def main(args):
     all_files = glob.glob(os.path.join(args.data_root,'*.arrow'))
 
     dataset = load_dataset(path=args.data_root,
-                      data_files=all_files[st:min(st+num_files,end)])
+                      data_files=all_files[st:min(st+num_files,end)],
+                      split='train'
+                      )
 
     click_loader = DataLoader(
         dataset,
         batch_size=args.batch_size,
-        collate_fn=collate_fn,
+        collate_fn=collate_fn
     )
 
-    ultr_models = ['twotower', 'ips-pointwise']
+    #ultr_models = ['twotower', 'ips-pointwise']
+    ultr_models = ['ips-pointwise']
     map_mod = {'twotower':['examination_2tower', 'relevance_2tower', PBMCrossEncoder],
                'ips-pointwise':['examination_ips', 'relevance_ips', IPSCrossEncoder]}
     models = {}
@@ -93,9 +96,9 @@ def main(args):
 
         #pdb.set_trace()
 
-    dataset = dataset.add_column(name='examination_twotower', column = examination['twotower'])
+    #dataset = dataset.add_column(name='examination_twotower', column = examination['twotower'])
     dataset = dataset.add_column(name='examination_ips', column = examination['ips-pointwise'])
-    dataset = dataset.add_column(name='relevance_twotower', column = relevance['twotower'])
+    #dataset = dataset.add_column(name='relevance_twotower', column = relevance['twotower'])
     dataset = dataset.add_column(name='relevance_ips', column = relevance['ips-pointwise'])
 
     dataset.save_to_disk(output_folder)

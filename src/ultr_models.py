@@ -18,7 +18,7 @@ def infer_ultr(pos_idx, device, model='ips'):
     #     model= IPSCrossEncoder.from_pretrained("philipphager/baidu-ultr_uva-bert_ips-pointwise")
     # else:
     #     model= PBMCrossEncoder.from_pretrained("philipphager/baidu-ultr_uva-bert_twotower")
-    df = pd.read_csv("/home/ec2-user/workspace/cf_rank/bbm/propensities/global_all_pairs.csv")
+    df = pd.read_csv("/ubc/cs/home/g/gbhatt/borg/ranking/CF_ranking/bbm/propensities/global_all_pairs.csv")
     model = torch.zeros(50, dtype=torch.float64).to(device)
     positions = df["position"].values
     propensities = torch.tensor(df.iloc[:, 1].values).to(device)

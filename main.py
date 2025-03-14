@@ -41,6 +41,8 @@ def get_args_parser():
     parser.add_argument('--sampling_type', default='rand_perturb', choices=['rand_perturb', 
                                                                       'swap_rand', 'swap_first_click_bot', 
                                                                       'swap_first_click_top', 'swap_first_click_rand'])
+    
+    parser.add_argument('--gain_fn', default='lin', choices=['lin','exp'])
 
     parser.add_argument('--ultr_models', default=None, 
                         choices=['ips','twotower'])
@@ -81,6 +83,7 @@ def get_args_parser():
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
     parser.add_argument('--eval', action='store_true')
+    parser.add_argument('--use_org_feats', action='store_true')
     parser.add_argument('--eval_ultr', action='store_true')
     parser.add_argument('--ste', action='store_true')
     parser.add_argument('--concat_feats', action='store_true')
@@ -97,6 +100,21 @@ def get_args_parser():
     parser.add_argument('--use_wandb', action='store_true')
     parser.add_argument('--use_rax', action='store_true')
     parser.add_argument('--use_doc_feat', action='store_true')
+    parser.add_argument('--per_item_feats', action='store_true')
+    parser.add_argument('--urcc_loss', action='store_true')
+    parser.add_argument('--pgrank_loss', action='store_true')
+    parser.add_argument('--pgrank_disc', action='store_true')
+    parser.add_argument('--pgrank_nobaseline', action='store_true')
+    parser.add_argument('--use_soft_perm_loss', action='store_true')
+    parser.add_argument('--choice2', action='store_true')
+    parser.add_argument('--production', action='store_true')
+    parser.add_argument('--choice_ideal', action='store_true')
+
+    parser.add_argument('--reward_loss_reg', default=1.0, type=float)
+    parser.add_argument('--soft_perm_loss_reg', default=1.0, type=float)
+
+    parser.add_argument('--MC_samples', default=4, type=int, help='number of samples to be used in Monte Carlo sampling. This is used by pgrank_loss')
+    
     parser.add_argument('--num_workers', default=4, type=int)
     parser.add_argument('--log_file', default=None, type=str)
     parser.add_argument('--wandb_project_name', default='ranking', type=str)
@@ -138,10 +156,10 @@ def main(args):
     #logger = TensorBoardLogger(save_dir=args.output_dir, version=1, name="lightning_logs")
     logger = CSVLogger(save_dir=args.output_dir, name="lightning_logs")
 
-    if False:
+    if args.use_org_feats:
         train_dataset = load_dataset(args.repo_name,name="clicks",
                                 split="train", # ["train", "test"]
-                                cache_dir="~/.cache/huggingface",
+                                cache_dir="/ubc/cs/home/g/gbhatt/borg/ranking/data/",
                                 )
         
         if args.eval_rels:
@@ -149,15 +167,14 @@ def main(args):
                         args.repo_name,
                         name="annotations",
                         split="test",
-                        cache_dir="~/.cache/huggingface",
+                        cache_dir="/ubc/cs/home/g/gbhatt/borg/ranking/data/",
                     )
         else:
             test_dataset = load_dataset(args.repo_name,name="clicks",
                                 split="test", # ["train", "test"]
                                 cache_dir="~/.cache/huggingface",
                                 )
-
-    if True:
+    else:
         train_files = glob.glob(os.path.join(os.path.join(args.data_path, 'train'), '**/*.arrow'), recursive=True)
         train_dataset = load_dataset(path=os.path.join(args.data_path, 'train'),
                                     data_files=train_files, split='train')
@@ -172,7 +189,7 @@ def main(args):
                                     data_files=test_files, split='train')
     
     pyl_trainer = pl.Trainer(devices=list(range(args.n_gpus)), accelerator="gpu", max_epochs=args.epochs, 
-                    gradient_clip_val=0.1, accumulate_grad_batches=1, \
+                    gradient_clip_val=0.1, accumulate_grad_batches=max(1, int(1024/(args.batch_size*args.n_gpus))), \
                     check_val_every_n_epoch=args.eval_epochs, callbacks=[checkpoint_callback],
                     log_every_n_steps=args.print_freq, logger=logger, num_sanity_val_steps=0,
                     strategy=DDPStrategy(find_unused_parameters=True),
@@ -194,12 +211,14 @@ def main(args):
     if args.eval:
         print('\n\n Evaluating ... ', args.save_fname, '\n')
         print('\n\n Evaluating ... ', args.save_fname, file=args.log_file)
-        if args.train_ranker_lambda:
+        
+        if args.train_ranker_lambda or args.train_ranker:
             trainer.resume(load_path=args.load_path, model='arranger')
         else:
             trainer.resume(load_path=args.load_path, model='reward')
         pyl_trainer.validate(trainer,test_dataloader)
     else:
+        #with torch.autograd.detect_anomaly():
         pyl_trainer.fit(trainer, train_dataloader, test_dataloader)
 
     #############################################################################################################
@@ -216,7 +235,7 @@ if __name__ == '__main__':
         args.output_folder = 'demo'
         args.num_workers = 0
         args.n_gpus = 1
-        args.batch_size = 3
+        #args.batch_size = 256
         args.frint_freq = 10
         args.limit_train_batches=4
         args.limit_val_batches=4

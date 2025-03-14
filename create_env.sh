@@ -1,4 +1,6 @@
-conda create -n "rank" python=3.9
+# conda create -n "rank1" python=3.10
+# conda init
+# conda activate rank1
 conda install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia
 pip install pytorch-lightning
 pip install tqdm

@@ -245,53 +245,6 @@ def soft_sort_group_parallel(
 
     return perm_mat
 
-def dcg(relevance, k):
-    """
-    Calculates the Discounted Cumulative Gain (DCG) at k.
-    """
-    relevance = relevance[:k]
-    dcg = relevance[0] + torch.sum(relevance[1:] / torch.log2(torch.arange(2, k+1)))
-    return dcg
-
-def ndcg(relevance, k, ideal_relevance=None):
-    """
-    Calculates the Normalized Discounted Cumulative Gain (NDCG) at k.
-    """
-    if ideal_relevance is None:
-        ideal_relevance = torch.sort(relevance, descending=True)[0]
-    
-    actual_dcg = dcg(relevance, k)
-    ideal_dcg = dcg(ideal_relevance, k)
-    
-    if ideal_dcg == 0:
-        return 0.0
-    else:
-        return actual_dcg / ideal_dcg
-    
-
-def ndcg_all(y_pred, y_true, ats=None, gain_function=lambda x: torch.pow(2, x) - 1, padding_indicator=-1,
-         filler_value=1.0):
-    """
-    Normalized Discounted Cumulative Gain at k.
-
-    Compute NDCG at ranks given by ats or at the maximum rank if ats is None.
-    :param y_pred: predictions from the model, shape [batch_size, slate_length]
-    :param y_true: ground truth labels, shape [batch_size, slate_length]
-    :param ats: optional list of ranks for NDCG evaluation, if None, maximum rank is used
-    :param gain_function: callable, gain function for the ground truth labels, e.g. torch.pow(2, x) - 1
-    :param padding_indicator: an indicator of the y_true index containing a padded item, e.g. -1
-    :param filler_value: a filler NDCG value to use when there are no relevant items in listing
-    :return: NDCG values for each slate and rank passed, shape [batch_size, len(ats)]
-    """
-    idcg = dcg(y_true, y_true, ats, gain_function, padding_indicator)
-    ndcg_ = dcg(y_pred, y_true, ats, gain_function, padding_indicator) / idcg
-    idcg_mask = idcg == 0
-    ndcg_[idcg_mask] = filler_value  # if idcg == 0 , set ndcg to filler_value
-
-    assert (ndcg_ < 0.0).sum() >= 0, "every ndcg should be non-negative"
-
-    return ndcg_
-
 
 def __apply_mask_and_get_true_sorted_by_preds(y_pred, y_true, padding_indicator=-1):
     mask = y_true == padding_indicator
@@ -303,81 +256,89 @@ def __apply_mask_and_get_true_sorted_by_preds(y_pred, y_true, padding_indicator=
     return torch.gather(y_true, dim=1, index=indices)
 
 
-def dcg_all(y_pred, y_true, ats=None, gain_function=lambda x: torch.pow(2, x) - 1, padding_indicator=-1):
+def custom_dcg(relevance, k, mask=None, gain_fn='exp'):
     """
-    Discounted Cumulative Gain at k.
-
-    Compute DCG at ranks given by ats or at the maximum rank if ats is None.
-    :param y_pred: predictions from the model, shape [batch_size, slate_length]
-    :param y_true: ground truth labels, shape [batch_size, slate_length]
-    :param ats: optional list of ranks for DCG evaluation, if None, maximum rank is used
-    :param gain_function: callable, gain function for the ground truth labels, e.g. torch.pow(2, x) - 1
-    :param padding_indicator: an indicator of the y_true index containing a padded item, e.g. -1
-    :return: DCG values for each slate and evaluation position, shape [batch_size, len(ats)]
+    Calculates the Discounted Cumulative Gain (DCG) at k for a batch of examples with masking support.
+    Args:
+        relevance (torch.Tensor): Tensor of shape (batch_size, num_items) representing relevance scores.
+        k (int): Rank up to which DCG is calculated.
+        mask (torch.Tensor): Optional mask of shape (batch_size, num_items) with 1 for valid items and 0 for invalid/padded items.
+        gain_fn (str): The gain function to use ('exp' for exponential or 'lin' for linear).
+    Returns:
+        torch.Tensor: DCG values for each example in the batch.
     """
-    y_true = y_true.clone()
-    y_pred = y_pred.clone()
 
-    actual_length = y_true.shape[1]
+    k = min(k, relevance.shape[1]) # should be min(top-k, n_items)
 
-    if ats is None:
-        ats = [actual_length]
-    ats = [min(at, actual_length) for at in ats]
+    if mask!=None:
+        relevance = relevance * mask # padded values are replaced with 0 and hence gain=0 for those
 
-    true_sorted_by_preds = __apply_mask_and_get_true_sorted_by_preds(y_pred, y_true, padding_indicator)
+    def gain_function(rel):
+        if gain_fn == 'exp':
+            return 2 ** rel - 1
+        return rel
 
-    discounts = (torch.tensor(1) / torch.log2(torch.arange(true_sorted_by_preds.shape[1], dtype=torch.float) + 2.0)).to(
-        device=true_sorted_by_preds.device)
+    # Take top-k relevance scores
+    relevance = relevance[:, :k]
 
-    gains = gain_function(true_sorted_by_preds)
+    # Compute log denominator
+    log_factors = torch.log2(torch.arange(3, k + 2, device=relevance.device, dtype=relevance.dtype))
 
-    discounted_gains = (gains * discounts)[:, :np.max(ats)]
+    # Compute DCG
+    gains = gain_function(relevance)
 
-    cum_dcg = torch.cumsum(discounted_gains, dim=1)
-
-    ats_tensor = torch.tensor(ats, dtype=torch.long) - torch.tensor(1)
-
-    dcg = cum_dcg[:, ats_tensor]
-
+    #pdb.set_trace()
+    
+    dcg = gains[:, 0] + torch.sum(gains[:, 1:] / log_factors, dim=1)
     return dcg
 
 
-def mrr_all(y_pred, y_true, ats=None, padding_indicator=-1):
+def custom_ndcg(preds, targets, k, mask=None, gain_fn='lin'):
     """
-    Mean Reciprocal Rank at k.
-
-    Compute MRR at ranks given by ats or at the maximum rank if ats is None.
-    :param y_pred: predictions from the model, shape [batch_size, slate_length]
-    :param y_true: ground truth labels, shape [batch_size, slate_length]
-    :param ats: optional list of ranks for MRR evaluation, if None, maximum rank is used
-    :param padding_indicator: an indicator of the y_true index containing a padded item, e.g. -1
-    :return: MRR values for each slate and evaluation position, shape [batch_size, len(ats)]
+    Calculates the Normalized Discounted Cumulative Gain (NDCG) at k for a batch of examples with masking support.
+    Args:
+        preds (torch.Tensor): Predicted scores of shape (batch_size, num_items).
+        target (torch.Tensor): Ground truth relevance scores of shape (batch_size, num_items).
+        k (int): Rank up to which NDCG is calculated.
+        mask (torch.Tensor): Optional mask of shape (batch_size, num_items) with 1 for valid items and 0 for invalid/padded items.
+        gain_fn (str): The gain function to use ('exp' for exponential or 'lin' for linear).
+    Returns:
+        torch.Tensor: NDCG values for each example in the batch.
     """
-    y_true = y_true.clone()
-    y_pred = y_pred.clone()
 
-    if ats is None:
-        ats = [y_true.shape[1]]
+    if mask is not None:
+        # mask = torch.where(mask == 0, -8e+8, mask)
+        # preds = preds*mask
+        # targets = targets*mask
 
-    true_sorted_by_preds = __apply_mask_and_get_true_sorted_by_preds(y_pred, y_true, padding_indicator)
+        mask_new = torch.where(mask == 0, 8e+8, mask)
+        #pdb.set_trace()
 
-    values, indices = torch.max(true_sorted_by_preds, dim=1)
-    indices = indices.type_as(values).unsqueeze(dim=0).t().expand(len(y_true), len(ats))
+        preds = preds + (1-mask_new) # addition masking preserves negative values
+        targets = targets + (1-mask_new)
 
-    ats_rep = torch.tensor(data=ats, device=indices.device, dtype=torch.float32).expand(len(y_true), len(ats))
+    # Sort relevance scores based on predicted order
+    sorted_indices = torch.argsort(preds, descending=True, dim=1)
+    relevance = torch.gather(targets, dim=1, index=sorted_indices)
 
-    within_at_mask = (indices < ats_rep).type(torch.float32)
+    # Compute ideal DCG by sorting target relevance in descending order
+    ideal_relevance = torch.sort(targets, descending=True, dim=1)[0]
 
-    result = torch.tensor(1.0) / (indices + torch.tensor(1.0))
+    # Calculate DCG and ideal DCG
+    actual_dcg = custom_dcg(relevance, k, mask=mask, gain_fn=gain_fn)
+    ideal_dcg = custom_dcg(ideal_relevance, k, mask=mask, gain_fn=gain_fn)
 
-    zero_sum_mask = torch.sum(values) == 0.0
-    result[zero_sum_mask] = 0.0
+    #pdb.set_trace()
 
-    result = result * within_at_mask
+    # Handle division by zero (when ideal_dcg is 0)
+    #print (actual_dcg, ideal_dcg)
+    ndcg_values = actual_dcg / (ideal_dcg + 1e-8)
+    ndcg_values[ideal_dcg == 0] = 0.0
 
-    return result
+    return ndcg_values, actual_dcg
 
-def get_ndcg(preds, targets, k=10, return_dcg=False, use_rax=False, mask=None):
+
+def get_ndcg_old(preds, targets, k=10, return_dcg=False, use_rax=False, mask=None, args=None):
 
     if use_rax:
         import jax.numpy as jnp
@@ -388,55 +349,220 @@ def get_ndcg(preds, targets, k=10, return_dcg=False, use_rax=False, mask=None):
         score = rax.dcg_metric(preds, targets, topn=k, where=mask)
         return score.item()
     
-    ndcg = RetrievalNormalizedDCG(top_k=k, return_dcg=return_dcg, ignore_index=0) # ignore padded index for targets: 0 is used for padding
+    if args!=None:
+        if args.ultr_models:
+            ndcg = RetrievalNormalizedDCG(top_k=k, ignore_index=0) # ignore padded index for targets: 0 is used for padding
+        else:
+            ndcg = RetrievalNormalizedDCG(top_k=k)
     idx = torch.repeat_interleave(torch.arange(preds.shape[0]), preds.shape[1])
 
     score = ndcg(preds.contiguous().view(-1), targets.contiguous().view(-1), idx)
 
     return score.item()
 
+def get_ndcg(preds, targets, k=10, mask=None, args=None, return_mean=True):
 
-def eval_ultr(batch, pred_scores, ips_model=None, device=None):
-    row,col = batch['tokens'].shape[0], batch['tokens'].shape[1]
-
-    pred_scores = pred_scores * torch.tensor(batch['mask']).to(device)
-
-    pred_scores_padded = torch.where(pred_scores==0, -8e+8, pred_scores)
+    ndcg, dcg = custom_ndcg(preds=preds, targets=targets, k=k, mask=mask, gain_fn=args.gain_fn)
     
-    sorted_indices = torch.argsort(pred_scores_padded, dim=1, descending=True)
-    new_positions = torch.empty_like(sorted_indices).to(device)
-    new_positions.scatter_(1, sorted_indices, torch.arange(pred_scores.size(1)).unsqueeze(0).expand_as(pred_scores).to(device))
+    score = ndcg
+    if args:
+        if args.use_dcg:
+            score = dcg
+    #pdb.set_trace()
 
-    #new_positions = np.array(new_positions.detach().cpu())
+    if return_mean:
+        return score.mean().item()
+    
+    return score
+
+def gumbel_softmax_sample(logits, tau=0.1, mask=None):
+    """Sample a ranking from Gumbel-Softmax distribution with masking."""
+    gumbel_noise = -torch.log(-torch.log(torch.rand_like(logits)))
+    logits = logits + gumbel_noise
+    if mask is not None:
+        logits = logits * mask + (1 - mask) * -1e9  # Mask invalid positions
+    probs = torch.softmax(logits / tau, dim=-1)
+    return probs
+
+def eval_ultr(batch, pred_scores, ips_model=None, device=None, args=None):
+
+    relevance_org = torch.tensor(batch['relevance_ips']).to(device)
+    #examination_org = torch.tensor(batch['examination_ips']).to(device)
+
+    # mask = 1.0*torch.tensor(batch['mask']).to(device)
+    # pred_scores_mask = pred_scores * mask
+    # pred_scores_padded = torch.where(pred_scores_mask==0, -8e+8, pred_scores_mask)
+
+    mask = torch.tensor(batch['mask']).to(device)
+    pred_scores_padded = torch.where(~mask, -8e+8, pred_scores)
 
     #pdb.set_trace()
     
-    # new_batch = {'tokens':batch['tokens'].reshape(row*col,128),
-    #         'attention_mask':batch['attention_mask'].reshape(row*col,128),
-    #         'token_types':batch['token_types'].reshape(row*col,128),
-    #         'positions':new_positions.reshape(row*col)}
-    
-    # out_c = ips_model(new_batch) #TODO:use propensities for inference
-    # exam = np.array(out_c.examination).reshape(row,col)
-    # rel = np.array(out_c.relevance).reshape(row,col)
+    sorted_indices = torch.argsort(pred_scores_padded, dim=1, descending=True)
+    new_positions = torch.empty_like(sorted_indices).to(device)
 
-    # relevance = torch.tensor(rel).to(device)
-    # examination = torch.tensor(exam).to(device)
+    new_positions.scatter_(1, sorted_indices, torch.arange(pred_scores.size(1)).unsqueeze(0).expand_as(pred_scores).to(device))
+    examination = infer_ultr(pos_idx=1+new_positions, device=device) # positions should start from 1 as exam[0] = 0
 
-    relevance = torch.tensor(batch['relevance_ips']).to(device)
-    examination = infer_ultr(pos_idx=new_positions, device=device)
-    #examination = torch.tensor(batch['examination_ips']).to(device)
-
-    relevance = relevance * torch.tensor(batch['mask']).to(device)
-    examination = examination * torch.tensor(batch['mask']).to(device)
+    relevance = relevance_org * mask
+    examination = examination * mask
 
     prob_click = examination * torch.sigmoid(relevance)
     prob_noclick = torch.prod(1-prob_click, dim=1)
     prob_atleast_1click = 1 - prob_noclick
 
+    score = get_ndcg(preds=torch.sigmoid(pred_scores), targets=torch.sigmoid(relevance_org), mask=1.0*mask, args=args)
+
+    return prob_atleast_1click.mean(), score
+
+
+def eval_ultr_choice2(batch, pred_scores, ips_model=None, device=None, args=None):
+
+    relevance_org = torch.tensor(batch['relevance_ips']).to(device) # rel ABD
+    examination_org = torch.tensor(batch['examination_ips']).to(device) # exam pos_(A), pos_(B), pos_(D) :: pos_(A)<pos_(B)<pos_(D)
+
+    # mask = 1.0*torch.tensor(batch['mask']).to(device)
+    # pred_scores_mask = pred_scores * mask
+    # pred_scores_padded = torch.where(pred_scores_mask==0, -8e+8, pred_scores_mask)
+
+    mask = torch.tensor(batch['mask']).to(device)
+    pred_scores_padded = torch.where(~mask, -8e+8, pred_scores) # 0.5, 0.25, 0.75, &, &, &
+
+    #pdb.set_trace()
+    
+    sorted_indices = torch.argsort(pred_scores_padded, dim=1, descending=True) # D, A, B, &, &, & ==> 2,0,1,3,4,5
+    rel_ranked_items = relevance_org[torch.arange(pred_scores.size(1)).unsqueeze(0).to(device), sorted_indices] # relevance is independent of positions
+
+    # new_positions = torch.empty_like(sorted_indices).to(device)
+
+    # new_positions.scatter_(1, sorted_indices, torch.arange(pred_scores.size(1)).unsqueeze(0).expand_as(pred_scores).to(device))
+    # examination_org = infer_ultr(pos_idx=new_positions, device=device) # choice 1: positions starts with 1...n, missing positions are not taken care of
+
+    relevance = rel_ranked_items * mask
+    examination = examination_org * mask
+
+    prob_click = examination * torch.sigmoid(relevance)
+    prob_noclick = torch.prod(1-prob_click, dim=1)
+    prob_atleast_1click = 1 - prob_noclick
+
+    score = get_ndcg(preds=torch.sigmoid(pred_scores), targets=torch.sigmoid(relevance_org), mask=1.0*mask, args=args)
+
+    return prob_atleast_1click.mean(), score
+
+
+def eval_ultr_ideal(batch, ips_model=None, device=None, args=None):
+
+    relevance_org = torch.tensor(batch['relevance_ips']).to(device)
+    pos_idx = 1 + torch.arange(batch['position'].shape[1]).repeat(batch['position'].shape[0],1).to(device)
+
+    examination_ideal = infer_ultr(pos_idx=pos_idx, device=device)
+    
+    ############ Ideal positions ###################################
+    mask = torch.tensor(batch['mask']).to(device)
+    relevance_org_padded = torch.where(~mask, -8e+8, relevance_org) # 0.5, 0.25, 0.75, &, &, &
+
+    #pdb.set_trace()
+    rel_sorted, rel_sorted_idx = torch.sort(relevance_org_padded, dim=1, descending=True)
+
+    if args.production:
+        rel_sorted = relevance_org
+
+    relevance_ideal = rel_sorted * mask
+    examination_ideal = examination_ideal * mask    
+    
+    prob_click = examination_ideal * torch.sigmoid(relevance_ideal)
+    prob_noclick = torch.prod(1-prob_click, dim=1)
+    prob_atleast_1click = 1 - prob_noclick
+
+    #score = get_ndcg(preds=torch.sigmoid(pred_scores), targets=torch.sigmoid(relevance_org), mask=1.0*mask, args=args)
+    score = 0.0
+
+    return prob_atleast_1click.mean(), score
+
+def eval_ultr_ideal_prev(batch, ips_model=None, device=None, args=None):
+
+    relevance_org = torch.tensor(batch['relevance_ips']).to(device)
+    
+    ############ Ideal positions ###################################
+    mask = torch.tensor(batch['mask']).to(device)
+    relevance_org_padded = torch.where(~mask, -8e+8, relevance_org) # 0.5, 0.25, 0.75, &, &, &
+    
+    examination = torch.tensor(batch['examination_ips']).to(device)
+    #pdb.set_trace()
+    exam_sorted_idx = torch.argsort(examination, dim=1, descending=True)
+    rel_sorted_idx = torch.argsort(relevance_org_padded, dim=1, descending=True)
+    optimal_pos = torch.zeros_like(relevance_org_padded, dtype=int)
+    
+    for i in range(examination.shape[0]):
+        optimal_pos[i, exam_sorted_idx[i]] = rel_sorted_idx[i]
+        
+    pred_scores = relevance_org.gather(1,optimal_pos)
+
+    prob_atleast_1click, score = eval_ultr_choice2(batch, pred_scores, ips_model=None, device=None, args=None)
+
+    return prob_atleast_1click, score
+
+def swap_columns(tensor, i, j):
+    temp = tensor[:, i].clone()
+    tensor[:, i] = tensor[:, j]
+    tensor[:, j] = temp
+    return tensor
+
+def loss_urcc(logits, labels, device, mask, reward_mod, inputs_embeds, position_ids, doc_feats, 
+						   		labels_click, attention_mask, avg_lables):
     #pdb.set_trace()
 
-    return prob_atleast_1click.mean()
+    def utility_metric(click, f_logit, cf_logit, mask):
+        out = torch.div(torch.sigmoid(cf_logit[0]), torch.sigmoid(f_logit[0])) * click[:,0].unsqueeze(1) * (1-mask.int()[:,0].unsqueeze(1))
+        for i in range(1,click.shape[1]):
+            out += torch.div(torch.sigmoid(cf_logit[i]), torch.sigmoid(f_logit[i])) * click[:,i].unsqueeze(1) * (1-mask.int()[:,i].unsqueeze(1))
+
+        return out
+
+    u_pi = labels * (1-mask.int())
+    u_pi = u_pi.sum(dim=1)
+
+    with torch.no_grad():
+        out_factual = reward_mod(inputs_embeds=inputs_embeds, position_ids=position_ids, 
+	    					   labels_click = labels_click, attention_mask=attention_mask) # TODO: detach gradients
+    
+    loss = torch.tensor([0.0], requires_grad=True).to(device)
+
+    count = 0
+    aggr_pos_idx = []
+    
+
+    for i in range(labels.shape[1]-1):
+        temp_pos_idx = position_ids.clone()
+        count = 0
+        aggr_pos_idx = []
+        for j in range(i+1,labels.shape[1]):
+            temp_pos_idx = swap_columns(temp_pos_idx, i,j)
+            aggr_pos_idx.append(temp_pos_idx)
+            count+=1
+            
+            # with torch.no_grad():
+            #     out_counterfact = reward_mod(inputs_embeds=inputs_embeds, position_ids=temp_pos_idx, 
+            #                 labels_click = labels_click, attention_mask=attention_mask)
+            
+            # u_pi_ = utility_metric(labels, out_factual, out_counterfact, mask)
+
+            # temp_loss = (u_pi_ - u_pi.unsqueeze(1))*torch.log(1+torch.exp(-1*(torch.sigmoid(out_factual['logits']) - torch.sigmoid(out_counterfact['logits']))))
+            # loss += temp_loss.sum()
+            
+        with torch.no_grad():
+        
+            out_counterfact = reward_mod(inputs_embeds=inputs_embeds.repeat(count,1,1), position_ids=torch.concat(aggr_pos_idx), 
+                        labels_click = labels_click.repeat(count,1), attention_mask=attention_mask.repeat(count,1))
+
+        u_pi_ = utility_metric(labels.repeat(count,1), torch.stack(out_factual['per_item_logits']).repeat(1,count,1),
+                               torch.stack(out_counterfact['per_item_logits']), mask.repeat(count,1))
+
+        
+        temp_loss = (u_pi_ - u_pi.repeat(count).unsqueeze(1))*torch.log(1+torch.exp(-1*(torch.sigmoid(out_factual['logits'].repeat(count,1)) - torch.sigmoid(out_counterfact['logits']))))
+        loss += temp_loss.sum()
+        
+    return loss
 
 
 if __name__ == '__main__':
