@@ -4,23 +4,24 @@ from pathlib import Path
 import os
 import pdb
 import glob
+import json
 import wandb
 import logging
 import torch
+import pandas as pd
 from torch.utils.data import DataLoader
-#from models import build_model
 
 import pytorch_lightning as pl
 from engine import local_trainer, Evaluator
 from pytorch_lightning.loggers import CSVLogger
 from pytorch_lightning import seed_everything
-# from lightning.pytorch.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.strategies import DDPStrategy
 
-from datasets import load_dataset
-from src.data import collate_fn
+from datasets import load_dataset, load_from_disk, concatenate_datasets
+from src.data import collate_fn as cf, collate_fn_llm
 from src.utils import get_rank
+from src.utils import get_label_weights
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Deformable DETR Detector', add_help=False)
@@ -41,9 +42,13 @@ def get_args_parser():
     parser.add_argument('--sampling_type', default='rand_perturb', choices=['rand_perturb', 
                                                                       'swap_rand', 'swap_first_click_bot', 
                                                                       'swap_first_click_top', 'swap_first_click_rand'])
+    
+    parser.add_argument('--gain_fn', default='lin', choices=['lin','exp'])
 
     parser.add_argument('--ultr_models', default=None, 
                         choices=['ips','twotower'])
+    parser.add_argument('--reward_loss_type', default='mse', 
+                        choices=['l1','mse','focal_l1','focal_mse','bce','fbce'])
     parser.add_argument('--lr_drop', default=40, type=int)
     parser.add_argument('--save_epochs', default=2, type=int)
     parser.add_argument('--delta_retain', default=0.5, type=float)
@@ -57,7 +62,8 @@ def get_args_parser():
     parser.add_argument('--n_gpus', default=4, type=int,
                         help="Number of GPUs available")
     
-    parser.add_argument('--problem_type', default='classification', type=str)
+    parser.add_argument('--problem_type', default='classification', 
+                        choices=['classification','regression'])
     parser.add_argument('--save_fname', default=None, type=str)
 
     # dataset parameters
@@ -81,7 +87,9 @@ def get_args_parser():
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
     parser.add_argument('--eval', action='store_true')
+    parser.add_argument('--use_org_feats', action='store_true')
     parser.add_argument('--eval_ultr', action='store_true')
+    parser.add_argument('--eval_llm', action='store_true')
     parser.add_argument('--ste', action='store_true')
     parser.add_argument('--concat_feats', action='store_true')
     parser.add_argument('--pretrain_ranker', action='store_true')
@@ -97,6 +105,26 @@ def get_args_parser():
     parser.add_argument('--use_wandb', action='store_true')
     parser.add_argument('--use_rax', action='store_true')
     parser.add_argument('--use_doc_feat', action='store_true')
+    parser.add_argument('--per_item_feats', action='store_true')
+    parser.add_argument('--urcc_loss', action='store_true')
+    parser.add_argument('--pgrank_loss', action='store_true')
+    parser.add_argument('--llm_exp', action='store_true')
+    parser.add_argument('--pgrank_disc', action='store_true')
+    parser.add_argument('--pgrank_nobaseline', action='store_true')
+    parser.add_argument('--use_soft_perm_loss', action='store_true')
+    parser.add_argument('--choice2', action='store_true')
+    parser.add_argument('--production', action='store_true')
+    parser.add_argument('--choice_ideal', action='store_true')
+    parser.add_argument('--factual', action='store_true')
+    parser.add_argument('--use_label_weights', action='store_true')
+    parser.add_argument('--reward_correction', action='store_true')
+
+    parser.add_argument('--reward_loss_reg', default=1.0, type=float)
+    parser.add_argument('--residual_coef', default=0.5, type=float)
+    parser.add_argument('--soft_perm_loss_reg', default=1.0, type=float)
+
+    parser.add_argument('--MC_samples', default=4, type=int, help='number of samples to be used in Monte Carlo sampling. This is used by pgrank_loss')
+    
     parser.add_argument('--num_workers', default=4, type=int)
     parser.add_argument('--log_file', default=None, type=str)
     parser.add_argument('--wandb_project_name', default='ranking', type=str)
@@ -105,7 +133,6 @@ def get_args_parser():
 
 def main(args):
 
-    # fix the seed for reproducibility
     seed = args.seed
     seed_everything(seed, workers=True)
 
@@ -132,16 +159,32 @@ def main(args):
             save_code=True,
         )
     
-    #print('set up processor ...')
-
     checkpoint_callback = ModelCheckpoint(dirpath=args.output_dir, filename='{epoch}')
-    #logger = TensorBoardLogger(save_dir=args.output_dir, version=1, name="lightning_logs")
     logger = CSVLogger(save_dir=args.output_dir, name="lightning_logs")
+    
+    if args.llm_exp:
+        train_files = glob.glob(os.path.join(args.data_path, '*'))
+        datasets = [load_from_disk(d) for d in train_files]
+        dataset = concatenate_datasets(datasets)
+        
+        dataset = dataset.filter(lambda example: example['query_id'] != -1)
 
-    if False:
+        with open(args.data_path.replace('processed', 'split_indices.json'), "r") as f:
+            data_ids = json.load(f)
+
+        train_dataset = dataset.filter(lambda example: example['query_id'] in data_ids['train'])
+        test_dataset = dataset.filter(lambda example: example['query_id'] in data_ids['test'])
+        collate_fn = collate_fn_llm
+        
+        tr_label_wt = get_label_weights(train_dataset['purchase_prob'])
+        tst_label_wt = get_label_weights(test_dataset['purchase_prob'])
+        train_dataset = train_dataset.add_column('label_weights',tr_label_wt)
+        test_dataset = test_dataset.add_column('label_weights',tst_label_wt)
+    elif args.use_org_feats:
+        collate_fn = cf
         train_dataset = load_dataset(args.repo_name,name="clicks",
                                 split="train", # ["train", "test"]
-                                cache_dir="~/.cache/huggingface",
+                                cache_dir="/ubc/cs/home/g/gbhatt/borg/ranking/data/",
                                 )
         
         if args.eval_rels:
@@ -149,15 +192,15 @@ def main(args):
                         args.repo_name,
                         name="annotations",
                         split="test",
-                        cache_dir="~/.cache/huggingface",
+                        cache_dir="/ubc/cs/home/g/gbhatt/borg/ranking/data/",
                     )
         else:
             test_dataset = load_dataset(args.repo_name,name="clicks",
                                 split="test", # ["train", "test"]
                                 cache_dir="~/.cache/huggingface",
                                 )
-
-    if True:
+    else:
+        collate_fn = cf
         train_files = glob.glob(os.path.join(os.path.join(args.data_path, 'train'), '**/*.arrow'), recursive=True)
         train_dataset = load_dataset(path=os.path.join(args.data_path, 'train'),
                                     data_files=train_files, split='train')
@@ -172,7 +215,7 @@ def main(args):
                                     data_files=test_files, split='train')
     
     pyl_trainer = pl.Trainer(devices=list(range(args.n_gpus)), accelerator="gpu", max_epochs=args.epochs, 
-                    gradient_clip_val=0.1, accumulate_grad_batches=1, \
+                    gradient_clip_val=0.1, accumulate_grad_batches=max(1, int(1024/(args.batch_size*args.n_gpus))), \
                     check_val_every_n_epoch=args.eval_epochs, callbacks=[checkpoint_callback],
                     log_every_n_steps=args.print_freq, logger=logger, num_sanity_val_steps=0,
                     strategy=DDPStrategy(find_unused_parameters=True),
@@ -180,8 +223,6 @@ def main(args):
                     limit_val_batches=args.limit_val_batches,
                     )
     
-    #sampler = torch.utils.data.DistributedSampler(train_dataset, shuffle=False)
-
     train_dataloader = DataLoader(train_dataset, collate_fn=collate_fn, batch_size=args.batch_size,
                                   num_workers=args.num_workers, pin_memory=True, drop_last=True, shuffle=False)
         
@@ -194,7 +235,8 @@ def main(args):
     if args.eval:
         print('\n\n Evaluating ... ', args.save_fname, '\n')
         print('\n\n Evaluating ... ', args.save_fname, file=args.log_file)
-        if args.train_ranker_lambda:
+        
+        if args.train_ranker_lambda or args.train_ranker:
             trainer.resume(load_path=args.load_path, model='arranger')
         else:
             trainer.resume(load_path=args.load_path, model='reward')
@@ -216,13 +258,10 @@ if __name__ == '__main__':
         args.output_folder = 'demo'
         args.num_workers = 0
         args.n_gpus = 1
-        args.batch_size = 3
         args.frint_freq = 10
         args.limit_train_batches=4
         args.limit_val_batches=4
         args.limit_test_batches=4
-        #args.n_viz = 500
-        
     else:
         args.limit_train_batches=None
         args.limit_val_batches=None

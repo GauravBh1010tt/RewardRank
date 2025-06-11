@@ -6,6 +6,7 @@ from typing import List, Dict, Optional, Tuple
 import mmh3
 import torch
 import pdb
+import json
 import numpy as np
 from datasets import Dataset
 from sklearn.model_selection import train_test_split
@@ -44,6 +45,13 @@ COLUMNS = {
     "document_length": {"padded": True, "dtype": int, "type": "ltr"},
     "title_length": {"padded": True, "dtype": int, "type": "ltr"},
     "abstract_length": {"padded": True, "dtype": int, "type": "ltr"},
+    "query": {"padded": False, "dtype": str},
+    "products": {"padded": False, "dtype": str},
+    "item_selected": {"padded": False, "dtype": str},
+    "source_file": {"padded": False, "dtype": str},
+    "purchase_prob": {"padded": False, "dtype": float},
+    "label_weights": {"padded": False, "dtype": float},
+    "item_position": {"padded": False, "dtype": int},
 }
 
 
@@ -67,12 +75,6 @@ def collate_fn(samples: List[Dict[str, np.ndarray]]):
     """
     batch = defaultdict(lambda: [])
     max_n = int(max([sample["n"] for sample in samples]))
-
-    #max_n = min(max_n, 50)
-
-    #print(max_n)
-    
-    #pdb.set_trace()
 
     for sample in samples:
         
@@ -104,10 +106,66 @@ def collate_fn(samples: List[Dict[str, np.ndarray]]):
         batch["mask"].append(mask)
 
     #import pdb; pdb.set_trace()
-    return {
-        column: np.array(features, dtype=COLUMNS[column]["dtype"])
-        for column, features in batch.items()
-    }
+    # return {
+    #     column: np.array(features, dtype=COLUMNS[column]["dtype"])
+    #     for column, features in batch.items()
+    # }
+    out_batch = {}
+    for column, features in batch.items():
+        #print (column)
+        if not column == "query":
+            out_batch[column] = np.array(features, dtype=COLUMNS[column]["dtype"])
+    
+    return out_batch
+
+
+def collate_fn_llm(samples: List[Dict[str, np.ndarray]]):
+    """
+    Collate function for training clicks / labels from the Baidu-ULTR-606k dataset:
+    https://huggingface.co/datasets/philipphager/baidu-ultr-606k/blob/main/baidu-ultr-606k.py
+
+    The function parses all available features, pads queries to the same numer of
+    documents, and converts datatypes.
+    """
+    batch = defaultdict(lambda: [])
+    max_n = 8
+
+    col_map = {'query_item_embeddings':'query_document_embedding',
+                'q_id': 'query_id',
+                'probability':'purchase_prob'}
+    
+    #pdb.set_trace()
+
+    for sample in samples:
+        
+        all_tokens, all_token_types, all_attention_mask = [],[],[]
+        for column, x in sample.items():
+            if column in list(col_map.keys()):
+                column = col_map[column]
+                
+            if column == 'query_document_embedding':
+                x = np.array(json.loads(x), dtype=np.float32)
+            #     embed.append(x)
+            # else:
+            batch[column].append(x)
+
+        mask = pad(np.ones(max_n), max_n).astype(bool)
+        batch["mask"].append(mask)
+        batch['position'].append(list(range(max_n)))
+
+    #import pdb; pdb.set_trace()
+    out_batch = {}
+    for column, features in batch.items():
+        if column == 'query_document_embedding':
+            out_batch[column] = np.stack(features, dtype=COLUMNS[column]["dtype"])
+        else:
+            out_batch[column] = np.array(features, dtype=COLUMNS[column]["dtype"])
+    
+    return out_batch            
+    # return {
+    #     column: np.array(features, dtype=COLUMNS[column]["dtype"])
+    #     for column, features in batch.items()
+    # }
 
 
 def format_input(

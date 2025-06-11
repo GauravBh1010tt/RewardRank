@@ -21,6 +21,8 @@ from transformers.modeling_attn_mask_utils import (
     _prepare_4d_causal_attention_mask_for_sdpa,
 )
 
+from src.utils import weighted_bce_with_logits_loss, weighted_focal_bce_with_logits_loss,  weighted_mse_loss, weighted_l1_loss, weighted_huber_loss, weighted_focal_mse_loss, weighted_focal_l1_loss
+
 class BertEmbeddings(nn.Module):
     """Construct the embeddings from word, position and token_type embeddings."""
 
@@ -95,7 +97,12 @@ class BertEmbeddings(nn.Module):
             else:
                 #pdb.set_trace()
                 phat_mat = soft_position_ids
-                pos_emb_mat = self.position_embeddings.weight[1:phat_mat.shape[-1]+1,:] # remove the 1st row as it is reserved for padded index
+                
+                if self.config.choice2:
+                    pos_emb_mat = self.position_embeddings(position_ids)
+                else:
+                    pos_emb_mat = self.position_embeddings.weight[1:phat_mat.shape[-1]+1,:] # remove the 1st row as it is reserved for padded index
+                    
                 soft_pos_mat = torch.matmul(phat_mat.permute(0,2,1), pos_emb_mat) # permute p_hat to ensure positions are multiplied with position_embedding_matrix
                 position_embeddings = soft_pos_mat #TODO:linear combination of items instead of positions
             embeddings += position_embeddings
@@ -443,7 +450,14 @@ class BertReward(BertPreTrainedModel):
         )
         self.dropout = nn.Dropout(classifier_dropout)
         #self.doc_feat_transform = nn.Linear(config.hidden_size, config.num_labels)
+
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
+
+        if config.per_item_feats:
+            if config.concat_feats:
+                self.classifier_per_items = nn.Linear(config.hidden_size*2, 1)
+            else:
+                self.classifier_per_items = nn.Linear(config.hidden_size, 1)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -459,9 +473,11 @@ class BertReward(BertPreTrainedModel):
         doc_feats: Optional[torch.Tensor] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
         labels: Optional[torch.Tensor] = None,
+        labels_click: Optional[torch.Tensor] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
+        label_weights: Optional[torch.Tensor] = None,
     ) -> Union[Tuple[torch.Tensor], SequenceClassifierOutput]:
         r"""
         labels (`torch.LongTensor` of shape `(batch_size,)`, *optional*):
@@ -497,6 +513,10 @@ class BertReward(BertPreTrainedModel):
         loss = None
 
         if labels is not None:
+
+            if self.num_labels == 1:
+                logits = logits.squeeze()
+                labels = labels.squeeze()
             if self.config.problem_type is None:
                 if self.num_labels == 1:
                     self.config.problem_type = "regression"
@@ -504,25 +524,58 @@ class BertReward(BertPreTrainedModel):
                     self.config.problem_type = "classification"
 
             if self.config.problem_type == "regression":
-                loss_fct = MSELoss()
+                
+                if self.config.reward_loss_type == 'mse':
+                    loss_fct = weighted_mse_loss
+                elif self.config.reward_loss_type == 'l1':
+                    loss_fct = weighted_l1_loss
+                elif self.config.reward_loss_type == 'focal_l1':
+                    loss_fct = weighted_focal_l1_loss
+                elif self.config.reward_loss_type == 'focal_mse':
+                    loss_fct = weighted_focal_mse_loss
+                
+                #loss_fct = MSELoss()
                 if self.num_labels == 1:
-                    loss = loss_fct(logits.squeeze(), labels.squeeze())
+                    loss = loss_fct(logits.squeeze(), labels.squeeze(), weights=label_weights)
                 else:
-                    loss = loss_fct(logits, labels)
+                    loss = loss_fct(logits, labels, weights=label_weights)
+                    
             elif self.config.problem_type == "classification":
-                loss_fct = BCEWithLogitsLoss()
-                loss = loss_fct(logits.squeeze(), labels)
-
+                # loss_fct = BCEWithLogitsLoss()
+                # #pdb.set_trace()
+                # loss = loss_fct(logits.squeeze(), labels)
+                if self.config.reward_loss_type == 'bce':
+                    loss = weighted_bce_with_logits_loss(logits, labels, weights=label_weights)
+                else:
+                    loss = weighted_focal_bce_with_logits_loss(logits, labels, weights=label_weights)
+                
+        #pdb.set_trace()
+        #loss = loss.to(torch.float32)
         if not return_dict:
             output = (logits,) + outputs[2:]
             return ((loss,) + output) if loss is not None else output
-        
+
+        per_item_logits = []
+        per_item_loss = torch.tensor([0.0], requires_grad=True).to(item_feats.device)
+
+        if self.config.per_item_feats:
+            loss_fct = BCEWithLogitsLoss()
+            for i in range(item_feats.shape[1]):
+                pooled_output = self.dropout(item_feats[:,i,:])
+                per_item_logits.append(self.classifier_per_items(pooled_output))
+                #pdb.set_trace()
+                loss_item = loss_fct(torch.sigmoid(per_item_logits[-1]).squeeze(), labels_click[:,i].float()) #TODO: verify if this is correct
+
+                per_item_loss += loss_item
+        #pdb.set_trace()
         out_dict={
             'loss':loss,
             'logits':logits,
             'hidden_states':outputs.hidden_states,
             'attentions':outputs.attentions,
             'cls_token':pooled_output,
+            'per_item_logits':per_item_logits,
+            'per_item_loss':per_item_loss,
         }
 
         return out_dict
