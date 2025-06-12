@@ -63,6 +63,8 @@ class local_trainer(pl.LightningModule):
 				self.resume(load_path=args.load_path_reward, model='reward')
 				if args.pretrain_ranker:
 					self.resume(load_path=args.load_path_ranker, model='arranger')
+		elif args.load_path_reward:
+			self.resume(load_path=args.load_path_reward, model='reward')
 
 		if args.eval_ultr:
 			self.ips_model = None
@@ -79,7 +81,7 @@ class local_trainer(pl.LightningModule):
 		self.val_acc = defaultdict(lambda: 0.0)
 		self.val_loss = defaultdict(lambda: 0.0)
 		self.stats = defaultdict(lambda: [])
-		self.save_output = {'cls_token_save':[], 'cls_label_save':[], 'cls_prob_save':[]}
+		self.save_output = {'reward_pred':[], 'pur_prob':[]}
 		#self.evaluator = Evaluator(args=self.args)
 
 	
@@ -346,16 +348,16 @@ class local_trainer(pl.LightningModule):
 
 			self.log("val_acc_prob_click", acc_ranker, prog_bar=True, sync_dist=True, batch_size=1)
 			self.log("val_acc_rel_ndcg", rel_ndcg, prog_bar=True, sync_dist=True, batch_size=1)
-		elif self.args.eval_llm:
-			new_positions = eval_llm(batch=batch, pred_scores=out_dict['ranker']['logits'],
-								device=self.device, args=self.args)
-			feat = torch.tensor(batch['query_document_embedding'], dtype=torch.float).to(self.device)
-			doc_mask = torch.tensor(batch['mask'], dtype=torch.float).to(self.device)
-			out = self.reward_model(inputs_embeds=feat, position_ids=new_positions, 
-						   			attention_mask=doc_mask)
-			score = torch.sigmoid(out['logits']).mean()
-			self.val_acc['E(pur_prob)'] += score
-			self.log('E(pur_prob)', score, prog_bar=True, sync_dist=True, batch_size=1)
+		# elif self.args.eval_llm:
+		# 	new_positions = eval_llm(batch=batch, pred_scores=out_dict['ranker']['logits'],
+		# 						device=self.device, args=self.args)
+		# 	feat = torch.tensor(batch['query_document_embedding'], dtype=torch.float).to(self.device)
+		# 	doc_mask = torch.tensor(batch['mask'], dtype=torch.float).to(self.device)
+		# 	out = self.reward_model(inputs_embeds=feat, position_ids=new_positions, 
+		# 				   			attention_mask=doc_mask)
+		# 	score = torch.sigmoid(out['logits']).mean()
+		# 	self.val_acc['E(pur_prob)'] += score
+		# 	self.log('E(pur_prob)', score, prog_bar=True, sync_dist=True, batch_size=1)
 		else:
 			if self.args.train_ranker:
 
@@ -410,6 +412,12 @@ class local_trainer(pl.LightningModule):
 					
 					self.log("val_loss_reward", out_dict['reward']['loss'], prog_bar=True, sync_dist=True, batch_size=1)
 			else:
+				#pdb.set_trace()
+
+				if self.args.eval_llm and self.args.reward_sanity:
+					self.save_output['reward_pred'].append(torch.sigmoid(out_dict['reward']['logits']).detach().cpu())
+					self.save_output['pur_prob'].append(out_dict['reward']['labels'].detach().cpu())
+
 				self.log("val_loss_reward", out_dict['reward']['loss'], prog_bar=True, sync_dist=True, batch_size=1)
 				self.val_loss['reward'] += out_dict['reward']['loss']
 
@@ -438,7 +446,6 @@ class local_trainer(pl.LightningModule):
 		val_acc_avg = defaultdict(lambda: float)
 		mean = defaultdict(lambda: float)
 		se = defaultdict(lambda: float)
-  
 
 		if not self.args.use_org_feats and self.args.eval_ultr:
 			for key in self.val_acc.keys():
@@ -451,6 +458,15 @@ class local_trainer(pl.LightningModule):
 									acc, file=self.args.log_file)
 					print(f"\n{key}: {mean[key][0]:.4f} ± {se[key][0]:.4f}")
 					print(f"\n{key}: {mean[key][0]:.4f} ± {se[key][0]:.4f}", file=self.args.log_file)
+
+		if self.args.eval_llm and self.args.reward_sanity:
+			pdb.set_trace()
+			df = pd.DataFrame({
+					'reward_pred': torch.stack(self.save_output['reward_pred']).view(-1).tolist(),
+					'pur_prob': torch.stack(self.save_output['pur_prob']).view(-1).tolist()
+				})
+			df.to_csv(f'{self.args.output_dir}/reward_data.csv', index=False)
+
 
 		self.val_acc = defaultdict(lambda: 0.0)
 		self.val_loss = defaultdict(lambda: 0.0)

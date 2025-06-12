@@ -89,7 +89,6 @@ def get_args_parser():
     parser.add_argument('--eval', action='store_true')
     parser.add_argument('--use_org_feats', action='store_true')
     parser.add_argument('--eval_ultr', action='store_true')
-    parser.add_argument('--reward_sanity', action='store_true')
     parser.add_argument('--eval_llm', action='store_true')
     parser.add_argument('--ste', action='store_true')
     parser.add_argument('--concat_feats', action='store_true')

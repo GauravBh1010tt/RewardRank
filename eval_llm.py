@@ -17,7 +17,7 @@ import seaborn as sns
 from torch.utils.data import DataLoader
 
 import pytorch_lightning as pl
-from engine import local_trainer, Evaluator
+from engine import local_trainer
 from pytorch_lightning.loggers import CSVLogger
 from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -47,15 +47,33 @@ def get_args_parser():
                         help='path where to load model')
     parser.add_argument('--device', default='cuda',
                         help='device to use for training / testing')
+    parser.add_argument('--problem_type', default='classification', 
+                        choices=['classification','regression'])
+    parser.add_argument('--max_positions_PE', default=50, type=int)
+    parser.add_argument('--per_item_feats', action='store_true')
+    parser.add_argument('--concat_feats', action='store_true')
+    parser.add_argument('--use_model_preds', default=1, type=int)
     parser.add_argument('--eval_llm', action='store_true')
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--llm_exp', action='store_true')
+    parser.add_argument('--choice2', action='store_true')
+    parser.add_argument('--train_ranker', action='store_true')
+    parser.add_argument('--pretrain_ranker', action='store_true')
+    parser.add_argument('--use_doc_feat', action='store_true')
+    parser.add_argument('--eval', action='store_true')
+    parser.add_argument('--eval_ultr', action='store_true')
+    parser.add_argument('--lr', default=2e-5, type=float)
+    parser.add_argument('--weight_decay', default=1e-2, type=float)
+    parser.add_argument('--train_ranker_lambda', action='store_true')
+    parser.add_argument('--reward_loss_type', default='mse', 
+                        choices=['l1','mse','focal_l1','focal_mse','bce','fbce'])
+    parser.add_argument('--load_path_reward', default='',
+                        help='path where to load model')
     parser.add_argument('--num_workers', default=4, type=int)
     parser.add_argument('--eval_online', action='store_true', help='generate the data for online LLM evaluation')
     parser.add_argument('--eval_offline', action='store_true', help='offline evvaluation from the inference of the LLM')
 
     return parser
-
 
 def parse_inp(input_path, filename):
     
@@ -221,7 +239,43 @@ def run_ranker(args):
 
 def plot(df, outfile):
 
-    df = test_df.copy()
+    df = df.copy()
+
+    # Preprocessing
+    df['products_dict'] = df['products'].apply(json.loads)
+    df['num_candidates'] = df['products_dict'].apply(len)
+    df['selected_in_candidates'] = df.apply(
+        lambda row: row['item_selected'] in row['products_dict'], axis=1
+    )
+
+    def get_selected_position(row):
+        try:
+            product_ids = list(row['products_dict'].keys())
+            if row['item_selected'] in product_ids:
+                return product_ids.index(row['item_selected']) + 1
+            else:
+                return -1
+        except:
+            return -1
+
+    df['selected_position'] = df.apply(get_selected_position, axis=1)
+
+    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(7, 5))
+
+    # Plot 1: Purchase Probability
+    sns.histplot(df['purchase_prob'], bins=20, kde=True, ax=axes)
+    axes.set_title("Purchase Probability")
+    axes.set_xlabel("Probability")
+    axes.set_ylabel("Frequency")
+
+    # Finalize
+    plt.tight_layout()
+    plt.savefig(outfile)
+    #plt.show()
+
+def plot_pos_freq(df, outfile):
+
+    df = df.copy()
 
     # Preprocessing
     df['products_dict'] = df['products'].apply(json.loads)
@@ -279,9 +333,9 @@ if __name__ == '__main__':
         inp_file = os.path.join(args.output_dir, 
                                 f"batch_inference_purchase-labeln-{args.output_folder.split('_')[-1]}_0.jsonl.out")
         
-        out  = args.output_folder.replace('_','-')
-        inp_file = os.path.join(args.output_dir, 
-                                 f"batch_inference_t-{out}_0.jsonl.out")
+        # out  = args.output_folder.replace('_','-')
+        # inp_file = os.path.join(args.output_dir, 
+        #                          f"batch_inference_t-{out}_0.jsonl.out")
         
         llm_df = parse_inp(inp_file, inp_file)
 
@@ -329,11 +383,21 @@ if __name__ == '__main__':
             print(f"Cut-off {threshold_low}:{threshold_high}  After  - Expected purchase prob: "
                 f"E[p(pur) in {threshold_low}:{threshold_high}] = {mean_after:.4f} ± {se_after:.4f}\n")
 
+            #pdb.set_trace()
+
+            plot(test_filtered, os.path.join(args.output_dir, 
+                                f"test_{threshold_low}_{threshold_high}.jpg"))
+            plot(df_filtered, os.path.join(args.output_dir, 
+                                f"llm_{threshold_low}_{threshold_high}.jpg"))
+
         get_cutoff(1.0, 0.8)
         get_cutoff(0.8, 0.6)
         get_cutoff(0.6, 0.4)
         get_cutoff(0.4)
-        #get_cutoff(0.2)
+        get_cutoff(1.0, 0.0)
 
-        plot(test_df, os.path.join(args.output_dir, 
-                                f"testdf.jpg"))
+        # plot(test_max, os.path.join(args.output_dir, 
+        #                         f"test_max.jpg"))
+        
+        # plot(llm_df_max, os.path.join(args.output_dir, 
+        #                         f"llm_max.jpg"))

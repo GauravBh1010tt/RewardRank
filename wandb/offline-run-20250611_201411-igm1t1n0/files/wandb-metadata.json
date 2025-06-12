@@ -1,0 +1,154 @@
+{
+  "os": "Linux-6.8.0-51-generic-x86_64-with-glibc2.39",
+  "python": "3.10.15",
+  "startedAt": "2025-06-12T03:14:12.124614Z",
+  "args": [
+    "--n_gpus=1",
+    "--use_wandb",
+    "--batch_size=256",
+    "--output_path=/ubc/cs/home/g/gbhatt/borg/ranking/outputs/",
+    "--output_folder=rr_llm_pgrank_mc5",
+    "--data_path=/ubc/cs/home/g/gbhatt/borg/ranking/data/llm_data/processed",
+    "--save_epochs=10",
+    "--epochs=21",
+    "--lr=2e-5",
+    "--lr_drop=12",
+    "--num_workers=2",
+    "--eval_epochs=4",
+    "--n_viz=0",
+    "--llm_exp",
+    "--load_path_reward=/ubc/cs/home/g/gbhatt/borg/ranking/outputs/reward_llm/checkpoints/checkpoint20.pth",
+    "--eval"
+  ],
+  "program": "/ubc/cs/research/shield/projects/gbhatt/workspace/ranking/CF_ranking/main.py",
+  "codePath": "main.py",
+  "git": {
+    "remote": "git@github.com:GauravBh1010tt/CF_ranking.git",
+    "commit": "3f08ec04adaa5dc22b2e049f998edbcc58fce434"
+  },
+  "root": "/ubc/cs/research/shield/projects/gbhatt/workspace/ranking/CF_ranking",
+  "host": "edith1.cs.ubc.ca",
+  "username": "gbhatt",
+  "executable": "/ubc/cs/home/g/gbhatt/borg/anaconda3/envs/rank1/bin/python",
+  "codePathLocal": "main.py",
+  "cpu_count": 20,
+  "cpu_count_logical": 20,
+  "gpu": "Quadro RTX 6000",
+  "gpu_count": 8,
+  "disk": {
+    "/": {
+      "total": "41956900864",
+      "used": "17092796416"
+    }
+  },
+  "memory": {
+    "total": "404277657600"
+  },
+  "cpu": {
+    "count": 20,
+    "countLogical": 20
+  },
+  "gpu_nvidia": [
+    {
+      "name": "Quadro RTX 6000",
+      "memoryTotal": "25769803776",
+      "cudaCores": 4608,
+      "architecture": "Turing"
+    },
+    {
+      "name": "NVIDIA GeForce RTX 2080 Ti",
+      "memoryTotal": "11811160064",
+      "cudaCores": 4352,
+      "architecture": "Turing"
+    },
+    {
+      "name": "Quadro RTX 6000",
+      "memoryTotal": "25769803776",
+      "cudaCores": 4608,
+      "architecture": "Turing"
+    },
+    {
+      "name": "NVIDIA GeForce RTX 2080 Ti",
+      "memoryTotal": "11811160064",
+      "cudaCores": 4352,
+      "architecture": "Turing"
+    },
+    {
+      "name": "NVIDIA GeForce RTX 2080 Ti",
+      "memoryTotal": "11811160064",
+      "cudaCores": 4352,
+      "architecture": "Turing"
+    },
+    {
+      "name": "NVIDIA GeForce RTX 2080 Ti",
+      "memoryTotal": "11811160064",
+      "cudaCores": 4352,
+      "architecture": "Turing"
+    },
+    {
+      "name": "NVIDIA GeForce RTX 2080 Ti",
+      "memoryTotal": "11811160064",
+      "cudaCores": 4352,
+      "architecture": "Turing"
+    },
+    {
+      "name": "NVIDIA GeForce RTX 2080 Ti",
+      "memoryTotal": "11811160064",
+      "cudaCores": 4352,
+      "architecture": "Turing"
+    }
+  ],
+  "slurm": {
+    "cluster_name": "archipelago",
+    "conf": "/opt/slurm-23.11.5/etc/slurm.conf",
+    "cpus_on_node": "20",
+    "cpus_per_task": "20",
+    "gpus_on_node": "8",
+    "gtids": "0",
+    "job_account": "lsigal",
+    "job_cpus_per_node": "20",
+    "job_end_time": "1750471034",
+    "job_gid": "1000",
+    "job_gpus": "0,1,2,3,4,5,6,7",
+    "job_id": "1355710",
+    "job_name": "interactive",
+    "job_nodelist": "edith1",
+    "job_num_nodes": "1",
+    "job_partition": "edith",
+    "job_qos": "normal",
+    "job_start_time": "1747879034",
+    "job_uid": "91425",
+    "job_user": "gbhatt",
+    "jobid": "1355710",
+    "launch_node_ipaddr": "142.103.16.201",
+    "localid": "0",
+    "mpi_type": "none",
+    "nnodes": "1",
+    "nodeid": "0",
+    "nodelist": "edith1",
+    "prio_process": "0",
+    "procid": "0",
+    "pty_port": "41207",
+    "pty_win_col": "171",
+    "pty_win_row": "48",
+    "script_context": "prolog_task",
+    "srun_comm_host": "142.103.16.201",
+    "srun_comm_port": "36437",
+    "step_id": "4294967290",
+    "step_launcher_port": "36437",
+    "step_nodelist": "edith1",
+    "step_num_nodes": "1",
+    "step_num_tasks": "1",
+    "step_tasks_per_node": "1",
+    "stepid": "4294967290",
+    "submit_dir": "/ubc/cs/home/g/gbhatt",
+    "submit_host": "submit-cs.cs.ubc.ca",
+    "task_pid": "3746614",
+    "tasks_per_node": "1",
+    "tmpdir": "/scratch-ssd/slurm-jobs/gbhatt/1355710",
+    "topology_addr": "edith1",
+    "topology_addr_pattern": "node",
+    "tres_per_task": "cpu:20"
+  },
+  "cudaVersion": "12.4"
+}
