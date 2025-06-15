@@ -126,10 +126,8 @@ To train the rankers, first configure the appropriate flags in the `train_ranker
 ```bash
 $ bash train_ranker.sh
 ```
-
-## Training CURSOR, PG-RANK*, and URCC
 ### CURSOR Training
-Use the following command to train `CURSOR`:
+Use the following flags (to be run using `train_ranker.sh`) to train `CURSOR`:
 ```bash
 python main.py --n_gpus=$n_gpus --use_wandb \
     --batch_size=$batch_size --output_path=$output_path \
@@ -143,7 +141,7 @@ python main.py --n_gpus=$n_gpus --use_wandb \
 ---
 
 ### PG-RANK* Training
-Use the following command to train `PG-RANK*`:
+Use the following flags (to be run using `train_ranker.sh`) to train `PG-RANK*`:
 ```bash
 python main.py --n_gpus=$n_gpus --use_wandb \
     --batch_size=$batch_size --output_path=$output_path \
@@ -157,7 +155,7 @@ python main.py --n_gpus=$n_gpus --use_wandb \
 ---
 
 ### URCC Training
-Use the following command to train `URCC`:
+Use the following flags (to be run using `train_ranker.sh`) to train `URCC`:
 ```bash
 python main.py --n_gpus=$n_gpus --use_wandb \
     --batch_size=$batch_size --output_path=$output_path \
@@ -171,8 +169,12 @@ python main.py --n_gpus=$n_gpus --use_wandb \
 Be sure to set the appropriate flags for `LLM_exp` in the `train_ranker.sh` script.
 
 ## Evaluation
+To evaluate the rankers, first configure the appropriate flags in the `eval_ranker.sh` script based on your evaluation strategy (by setting `ips_eval` and `llm_eval` flag). Specify the correct path to the preprocessed dataset.
+```bash
+$ bash eval_ranker.sh
+```
 ### KD_Eval
-Evaluate the trained model using `KD_Eval`:
+Evaluate the trained model using `KD_Eval` by using the following flags (to be run using `eval_ranker.sh`):
 ```bash
 python main.py --batch_size=$batch_size --output_path=$output_path \
     --output_folder=$model --data_path=$data_path \
@@ -185,7 +187,7 @@ python main.py --batch_size=$batch_size --output_path=$output_path \
 ---
 
 ### LAU_Eval (Online)
-Generate inference-based ranking data for online LLM evaluation:
+Generate inference-based ranking data for online LLM evaluation by using the following flags (to be run using `eval_ranker.sh`):
 ```bash
 python eval_llm.py --batch_size=$batch_size --output_path=$output_path \
     --data_path=$data_path --n_gpus=$n_gpus --load_path=$load_path \
@@ -196,7 +198,7 @@ python eval_llm.py --batch_size=$batch_size --output_path=$output_path \
 ---
 
 ### LAU_Eval (Offline)
-Evaluate LLM responses for a given ranking strategy:
+Evaluate LLM responses for a given ranking strategy by using the following flags (to be run using `eval_ranker.sh`):
 ```bash
 python eval_llm.py --batch_size=$batch_size --output_path=$output_path \
     --data_path=$data_path --n_gpus=$n_gpus --load_path=$load_path \
@@ -208,7 +210,7 @@ Don’t forget to set the required flags and paths in the `eval_ranker.sh` scrip
 ## Citation
 If you find this repo useful, please cite:
 ```
-@article{bhatt2024preventing,
+@article{bhatt2025_CURSOR,
   title={Data-Driven Reward Modeling for Counterfactual Learning to Rank},
   author={Gaurav Bhatt, Kiran Koshi Thekumparampil, Tanmay Gangwani, Tesi Xiao, Leonid Sigal},
   journal={In arXiv},
