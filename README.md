@@ -67,7 +67,7 @@ We will use `src/create_kdeval_data.py` to generete the pseduo labels. Pass the 
 ```bash
 $ python src/create_kdeval_data.py --data_root='' --out_dir=''
 ```
-
+---
 ### LAU-Eval
 Download the [KDD Cup dataset](https://arxiv.org/pdf/2206.06588) from the [official ESCI GitHub repository](https://github.com/amazon-science/esci-data). The dataset consists of the following three files:
 
@@ -107,7 +107,7 @@ Set the following flag:
 ```bash
 ips_train=1
 ```
-
+---
 ### For LAU-Eval  
 Set the following flags:
 ```bash
