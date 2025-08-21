@@ -9,7 +9,7 @@
 
 > **[RewardRank: Optimizing True Learning-to-Rank Utility](https://arxiv.org/pdf/2508.14180)**<br>
 > [Gaurav Bhatt](https://gauravbh1010tt.github.io/), 
-[Kiran Koshi Thekumparampil](https://scholar.google.com/citations?user=0gJQCIgAAAAJ&hl=en),
+[Kiran Koshy Thekumparampil](https://scholar.google.com/citations?user=0gJQCIgAAAAJ&hl=en),
 [Tanmay Gangwani](https://tgangwani.github.io/),
 [Tesi Xiao](https://tesixiao.github.io/),
 [Leonid Sigal](https://www.cs.ubc.ca/~lsigal/)
