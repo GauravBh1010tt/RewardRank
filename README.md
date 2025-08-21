@@ -1,14 +1,13 @@
-# CURSOR
-**C**ounterfactual **U**tility-based **R**anking with **S**oft-s**OR**ting
+# RewardRank
 
-[![paper](https://img.shields.io/badge/paper-arXiv-cyan)](https://www.ecva.net/papers/eccv_2024/papers_ECCV/papers/11330.pdf)
+[![paper](https://img.shields.io/badge/paper-arXiv-cyan)](https://arxiv.org/pdf/2508.14180)
 
 
 <p align="center">
     <img src="figs/main.png" width="600px"/>
 </p>
 
-> **[Data-Driven Reward Modeling for Counterfactual Learning to Rank](https://arxiv.org/pdf/2403.14797)**<br>
+> **[RewardRank: Optimizing True Learning-to-Rank Utility](https://arxiv.org/pdf/2508.14180)**<br>
 > [Gaurav Bhatt](https://gauravbh1010tt.github.io/), 
 [Kiran Koshi Thekumparampil](https://scholar.google.com/citations?user=0gJQCIgAAAAJ&hl=en),
 [Tanmay Gangwani](https://tgangwani.github.io/),
@@ -16,14 +15,11 @@
 [Leonid Sigal](https://www.cs.ubc.ca/~lsigal/)
 <br>
 
-> $Abstract$. Traditional ranking systems rely on proxy loss functions that assume simplistic user behavior, such as users preferring a rank list where items are sorted by hand-crafted relevance.
-However, real-world user interactions are influenced by complex behavioral biases, including position bias, brand affinity, decoy effects, and similarity aversion, which these objectives fail to capture. As a result, models trained on such losses often misalign with actual user utility, such as the probability of any click or purchase across the ranked list.
-In this work, we propose a data-driven framework for modeling user behavior through counterfactual reward learning. Our method first trains a deep utility model to estimate user engagement for entire item permutations using logged data. Then, a ranking policy 
-is optimized to maximize predicted utility via differentiable soft permutation operators, enabling end-to-end training over the space of factual and counterfactual rankings. To address the challenge of evaluation without ground-truth for unseen permutations, we introduce two automated protocols: (i) \textit{KD-Eval}, using a position-aware oracle for counterfactual reward estimation, and (ii) \textit{LLM-Eval}, which simulates user preferences via large language models. Experiments on large-scale benchmarks, including Baidu-ULTR and the Amazon KDD Cup datasets, demonstrate that our approach consistently outperforms strong baselines, highlighting the effectiveness of modeling user behavior dynamics for utility-optimized ranking.
+> $Abstract$. Traditional ranking systems rely on proxy loss functions that assume simplistic user behavior, such as users preferring a rank list where items are sorted by hand-crafted relevance. However, real-world user interactions are influenced by complex behavioral biases, including position bias, brand affinity, decoy effects, and similarity aversion, which these objectives fail to capture. As a result, models trained on such losses often misalign with actual user utility, such as the probability of any click or purchase across the ranked list. In this work, we propose a data-driven framework for modeling user behavior through counterfactual reward learning. Our method, RewardRank, first trains a deep utility model to estimate user engagement for entire item permutations using logged data. Then, a ranking policy is optimized to maximize predicted utility via differentiable soft permutation operators, enabling end-to-end training over the space of factual and counterfactual rankings. To address the challenge of evaluation without ground-truth for unseen permutations, we introduce two automated protocols: (i) KD-Eval, using a position-aware oracle for counterfactual reward estimation, and (ii) LLM-Eval, which simulates user preferences via large language models. Experiments on large-scale benchmarks, including Baidu-ULTR and the Amazon KDD Cup datasets, demonstrate that our approach consistently outperforms strong baselines, highlighting the effectiveness of modeling user behavior dynamics for utility-optimized ranking.
 
 ## Outline
 
-- [CURSOR](#cursor)
+- [RewardRank](#rewardrank)
   - [Outline](#outline)
   - [Installation](#installation)
   - [Data Preparation](#data-preparation)
@@ -57,7 +53,7 @@ By default, the dataset is cached in the `.cache` directory. We use this dataset
 To set up the IPS model:
 
 ```bash
-$ cd CURSOR
+$ cd RewardRank
 $ git clone git@github.com:philipphager/baidu-bert-model.git
 $ mv baidu-bert-model bbm
 ```
@@ -126,8 +122,8 @@ To train the rankers, first configure the appropriate flags in the `train_ranker
 ```bash
 $ bash train_ranker.sh
 ```
-### CURSOR Training
-Use the following flags (to be run using `train_ranker.sh`) to train `CURSOR`:
+### RewardRank Training
+Use the following flags (to be run using `train_ranker.sh`) to train `RewardRank`:
 ```bash
 python main.py --n_gpus=$n_gpus --use_wandb \
     --batch_size=$batch_size --output_path=$output_path \
@@ -155,7 +151,7 @@ python main.py --n_gpus=$n_gpus --use_wandb \
 ---
 
 ### URCC Training
-Use the following flags (to be run using `train_ranker.sh`) to train `URCC`:
+Use the following flags (to be run using `train_ranker.sh`) to train `URCC*`:
 ```bash
 python main.py --n_gpus=$n_gpus --use_wandb \
     --batch_size=$batch_size --output_path=$output_path \
@@ -210,10 +206,13 @@ Don’t forget to set the required flags and paths in the `eval_ranker.sh` scrip
 ## Citation
 If you find this repo useful, please cite:
 ```
-@article{bhatt2025_CURSOR,
-  title={Data-Driven Reward Modeling for Counterfactual Learning to Rank},
-  author={Gaurav Bhatt, Kiran Koshi Thekumparampil, Tanmay Gangwani, Tesi Xiao, Leonid Sigal},
-  journal={In arXiv},
-  year={2025}
+@misc{bhatt2025rewardrank,
+      title={RewardRank: Optimizing True Learning-to-Rank Utility}, 
+      author={Gaurav Bhatt and Kiran Koshy Thekumparampil and Tanmay Gangwani and Tesi Xiao and Leonid Sigal},
+      year={2025},
+      eprint={2508.14180},
+      archivePrefix={arXiv},
+      primaryClass={cs.IR},
+      url={https://arxiv.org/abs/2508.14180}, 
 }
 ```
