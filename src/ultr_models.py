@@ -11,7 +11,7 @@ from collections import defaultdict
 
 def infer_ultr(pos_idx, device, model='ips'):
     df = pd.read_csv("/ubc/cs/home/g/gbhatt/borg/ranking/CF_ranking/bbm/propensities/global_all_pairs.csv")
-    model = torch.zeros(50, dtype=torch.float64).to(device)
+    model = torch.zeros(500, dtype=torch.float64).to(device)
     positions = df["position"].values
     propensities = torch.tensor(df.iloc[:, 1].values).to(device)
 

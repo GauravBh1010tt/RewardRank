@@ -23,6 +23,8 @@ from src.data import collate_fn as cf, collate_fn_llm
 from src.utils import get_rank
 from src.utils import get_label_weights
 
+torch.autograd.set_detect_anomaly(True)
+
 def get_args_parser():
     parser = argparse.ArgumentParser('Deformable DETR Detector', add_help=False)
     parser.add_argument('--lr', default=2e-5, type=float)
@@ -42,6 +44,9 @@ def get_args_parser():
     parser.add_argument('--sampling_type', default='rand_perturb', choices=['rand_perturb', 
                                                                       'swap_rand', 'swap_first_click_bot', 
                                                                       'swap_first_click_top', 'swap_first_click_rand'])
+    parser.add_argument('--rank_loss', default='pirank', choices=['pirank', 'ips_point',
+                                                                      'list_mle', 'list_net', 
+                                                                      'ips_list', 'lambdarank'])
     
     parser.add_argument('--gain_fn', default='lin', choices=['lin','exp'])
 
@@ -82,7 +87,7 @@ def get_args_parser():
     parser.add_argument('--device', default='cuda',
                         help='device to use for training / testing')
     parser.add_argument('--seed', default=42, type=int)
-    parser.add_argument('--n_viz', default=5, type=int)
+    parser.add_argument('--n_viz', default=0, type=int)
     parser.add_argument('--resume', default=0, type=int)
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
@@ -96,11 +101,12 @@ def get_args_parser():
     parser.add_argument('--pretrain_ranker', action='store_true')
     parser.add_argument('--merge_imgs', action='store_true')
     parser.add_argument('--train_ranker', action='store_true')
-    parser.add_argument('--train_ranker_lambda', action='store_true')
+    parser.add_argument('--train_ranker_naive', action='store_true')
     parser.add_argument('--eval_rels', action='store_true')
     parser.add_argument('--force_tnse', action='store_true')
     parser.add_argument('--use_dcg', action='store_true')
     parser.add_argument('--save_cls', action='store_true')
+    parser.add_argument('--save_soft_labels', action='store_true')
     parser.add_argument('--cls_reg', action='store_true')
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--use_wandb', action='store_true')
@@ -118,11 +124,17 @@ def get_args_parser():
     parser.add_argument('--choice_ideal', action='store_true')
     parser.add_argument('--factual', action='store_true')
     parser.add_argument('--use_label_weights', action='store_true')
+    parser.add_argument('--lin_pos', action='store_true')
     parser.add_argument('--reward_correction', action='store_true')
-
+    parser.add_argument('--reward_plus_proxy', action='store_true')
+    parser.add_argument('--ips_sampling', action='store_true')
+    parser.add_argument('--ips_rel', action='store_true')
+    parser.add_argument('--reward_loss_cls', action='store_true')
     parser.add_argument('--reward_loss_reg', default=1.0, type=float)
+    parser.add_argument('--reward_loss_reg_peritem', default=1.0, type=float)
     parser.add_argument('--residual_coef', default=0.5, type=float)
     parser.add_argument('--soft_perm_loss_reg', default=1.0, type=float)
+    parser.add_argument('--soft_sort_temp', default=1.0, type=float)
 
     parser.add_argument('--MC_samples', default=4, type=int, help='number of samples to be used in Monte Carlo sampling. This is used by pgrank_loss')
     
@@ -167,8 +179,11 @@ def main(args):
         train_files = glob.glob(os.path.join(args.data_path, '*'))
         datasets = [load_from_disk(d) for d in train_files]
         dataset = concatenate_datasets(datasets)
-        
-        dataset = dataset.filter(lambda example: example['query_id'] != -1)
+
+        if args.train_ranker_naive:
+            dataset = dataset.filter(lambda example: example['item_position'] != -1 and example['query_id'] != -1)
+        else:
+            dataset = dataset.filter(lambda example: example['query_id'] != -1)
 
         with open(args.data_path.replace('processed', 'split_indices.json'), "r") as f:
             data_ids = json.load(f)
@@ -177,29 +192,66 @@ def main(args):
         test_dataset = dataset.filter(lambda example: example['query_id'] in data_ids['test'])
         collate_fn = collate_fn_llm
         
-        tr_label_wt = get_label_weights(train_dataset['purchase_prob'])
-        tst_label_wt = get_label_weights(test_dataset['purchase_prob'])
-        train_dataset = train_dataset.add_column('label_weights',tr_label_wt)
-        test_dataset = test_dataset.add_column('label_weights',tst_label_wt)
+        # tr_label_wt = get_label_weights(train_dataset['purchase_prob'])
+        # tst_label_wt = get_label_weights(test_dataset['purchase_prob'])
+        # train_dataset = train_dataset.add_column('label_weights',tr_label_wt)
+        # test_dataset = test_dataset.add_column('label_weights',tst_label_wt)
+
+        if args.save_soft_labels:
+            import pandas as pd
+            import seaborn as sns
+            import matplotlib.pyplot as plt
+
+            pur = [i for i in test_dataset['purchase_prob']]
+
+            sns.histplot(pd.DataFrame(pur), bins=15, kde=True, stat='probability')
+            plt.legend([], [], frameon=False)
+            plt.xlabel(r'$\hat{y} = P(pur)$')
+            plt.ylabel('Relative Frequency')
+
+            # Save the plot before showing it
+            plt.savefig(f"{args.output_dir}/histogram_purchase_probs.png", dpi=300, bbox_inches='tight')
+
+            pos = [i+1 for i in test_dataset['item_position']]
+            item_positions_series = pd.Series(pos)
+
+            # Calculate the relative frequency of each unique item
+            frequency = item_positions_series.value_counts(normalize=True)  # normalize=True gives relative frequencies
+
+            # Convert the result into a DataFrame
+            df = frequency.reset_index()
+            df.columns = ['Item Position', 'Relative Frequency']
+
+            # Plot the bar plot
+            #plt.figure(figsize=(12, 6))
+            sns.barplot(x='Item Position', y='Relative Frequency', data=df)
+
+            # Add title and labels
+            #plt.title('Relative Frequency of Item Positions', fontsize=16)
+            plt.xlabel('Item Position')
+            plt.ylabel('Relative Frequency')
+            plt.savefig(f"{args.output_dir}/histogram_pos.png", dpi=300, bbox_inches='tight')
+
     elif args.use_org_feats:
         collate_fn = cf
+        print ('using org data ..')
         train_dataset = load_dataset(args.repo_name,name="clicks",
                                 split="train", # ["train", "test"]
                                 cache_dir="/ubc/cs/home/g/gbhatt/borg/ranking/data/",
                                 )
         
-        if args.eval_rels:
-            test_dataset = load_dataset(
-                        args.repo_name,
-                        name="annotations",
-                        split="test",
-                        cache_dir="/ubc/cs/home/g/gbhatt/borg/ranking/data/",
-                    )
-        else:
-            test_dataset = load_dataset(args.repo_name,name="clicks",
-                                split="test", # ["train", "test"]
-                                cache_dir="~/.cache/huggingface",
-                                )
+        #if args.eval_rels:
+        test_dataset = load_dataset(
+                    args.repo_name,
+                    name="annotations",
+                    split="test",
+                    cache_dir="/ubc/cs/home/g/gbhatt/borg/ranking/data/",
+                )
+        # else:
+        #     test_dataset = load_dataset(args.repo_name,name="clicks",
+        #                         split="test", # ["train", "test"]
+        #                         cache_dir="~/.cache/huggingface",
+        #                         )
     else:
         collate_fn = cf
         train_files = glob.glob(os.path.join(os.path.join(args.data_path, 'train'), '**/*.arrow'), recursive=True)
@@ -216,7 +268,8 @@ def main(args):
                                     data_files=test_files, split='train')
     
     pyl_trainer = pl.Trainer(devices=list(range(args.n_gpus)), accelerator="gpu", max_epochs=args.epochs, 
-                    gradient_clip_val=0.1, accumulate_grad_batches=max(1, int(1024/(args.batch_size*args.n_gpus))), \
+                    gradient_clip_val=0.1, 
+                    #accumulate_grad_batches=max(1, int(1024/(args.batch_size*args.n_gpus))),
                     check_val_every_n_epoch=args.eval_epochs, callbacks=[checkpoint_callback],
                     log_every_n_steps=args.print_freq, logger=logger, num_sanity_val_steps=0,
                     strategy=DDPStrategy(find_unused_parameters=True),
@@ -232,15 +285,18 @@ def main(args):
 
     trainer = local_trainer(train_loader=train_dataloader,val_loader=test_dataloader,
                             test_dataset=test_dataset,args=args)
+    
+    #pdb.set_trace()
         
     if args.eval:
         print('\n\n Evaluating ... ', args.save_fname, '\n')
         print('\n\n Evaluating ... ', args.save_fname, file=args.log_file)
         
-        if args.train_ranker_lambda or args.train_ranker:
+        if args.train_ranker_naive or args.train_ranker:
             trainer.resume(load_path=args.load_path, model='arranger')
-        else:
-            trainer.resume(load_path=args.load_path, model='reward')
+        if args.load_path_reward:
+            trainer.resume(load_path=args.load_path_reward, model='reward')
+            
         pyl_trainer.validate(trainer,test_dataloader)
     else:
         pyl_trainer.fit(trainer, train_dataloader, test_dataloader)
@@ -248,8 +304,8 @@ def main(args):
     #############################################################################################################
     args.log_file.close()
 
-    if not args.eval:
-        trainer.evaluator.plot_train_val(log_file_path=args.output_dir+'/out.log',output_image_path=args.output_dir+'/eval_train_val.jpg')
+    # if not args.eval:
+    #     trainer.evaluator.plot_train_val(log_file_path=args.output_dir+'/out.log',output_image_path=args.output_dir+'/eval_train_val.jpg')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Rank BERT', parents=[get_args_parser()])
@@ -268,12 +324,12 @@ if __name__ == '__main__':
         args.limit_val_batches=None
         args.limit_test_batches=None
 
-    args.output_dir = args.output_path+args.output_folder
+    args.output_dir = os.path.join(args.output_path,args.output_folder)
 
     if args.output_dir:
         Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
-    logging.basicConfig(filename=args.output_dir+'/error.log', level=logging.ERROR)
+    logging.basicConfig(filename=os.path.join(args.output_dir,'error.log'), level=logging.ERROR)
     
     try:
         main(args)

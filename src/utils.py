@@ -509,13 +509,14 @@ def eval_ultr(batch, pred_scores, ips_model=None, device=None, args=None):
 
     mask = torch.tensor(batch['mask']).to(device)
     pred_scores_padded = torch.where(~mask, -8e+8, pred_scores)
-
-    #pdb.set_trace()
     
     sorted_indices = torch.argsort(pred_scores_padded, dim=1, descending=True)
     new_positions = torch.empty_like(sorted_indices).to(device)
 
     new_positions.scatter_(1, sorted_indices, torch.arange(pred_scores.size(1)).unsqueeze(0).expand_as(pred_scores).to(device))
+    
+    #pdb.set_trace()
+
     examination = infer_ultr(pos_idx=1+new_positions, device=device) # positions should start from 1 as exam[0] = 0
 
     relevance = relevance_org * mask
@@ -525,7 +526,15 @@ def eval_ultr(batch, pred_scores, ips_model=None, device=None, args=None):
     prob_noclick = torch.prod(1-prob_click, dim=1)
     prob_atleast_1click = 1 - prob_noclick
 
-    score = get_ndcg(preds=torch.sigmoid(pred_scores), targets=torch.sigmoid(relevance_org), mask=1.0*mask)
+    if args.ips_rel:
+        relevance_org = torch.tensor(batch['relevance_ips']).to(device)
+        score = get_ndcg(preds=torch.sigmoid(pred_scores), targets=torch.sigmoid(relevance_org), 
+                        mask=1.0*mask, use_dcg=False)
+    else:
+        clicks = torch.tensor(batch['click'], dtype=torch.float).to(device)
+
+        score = get_ndcg(preds=torch.sigmoid(pred_scores), targets=clicks, 
+                        mask=1.0*mask, use_dcg=False)
 
     return prob_atleast_1click.mean(), score
 
@@ -654,6 +663,11 @@ def loss_urcc(logits, labels, device, mask, reward_mod, inputs_embeds, position_
         loss += temp_loss.sum()
         
     return loss
+
+
+import torch
+import torch.nn.functional as F
+from typing import Dict
 
 
 if __name__ == '__main__':
