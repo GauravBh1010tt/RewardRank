@@ -16,9 +16,9 @@ batch_size=256
 n_gpus=3
 soft_base=0.8
 soft_gain=0.05
-output_path=/ubc/cs/home/g/gbhatt/borg/ranking/outputs/
-data_path=/ubc/cs/home/g/gbhatt/borg/ranking/data/custom_click
-#data_path=/ubc/cs/home/g/gbhatt/borg/ranking/data/llm_data/processed
+output_path=''ranking/outputs/
+data_path=''ranking/data/custom_click
+#data_path=''ranking/data/llm_data/processed
 load_path="${output_path}${model}/checkpoints/checkpoint${ckpt}.pth"
 load_path_reward="${output_path}${model_reward}/checkpoints/checkpoint${ckpt}.pth"
 load_path_ranker="${output_path}${model_ranker}/checkpoints/checkpoint${ckpt}.pth"
@@ -43,7 +43,7 @@ fi
 if [[ $ips_train -gt 0 ]]
 then
 echo "IPS Training... "${model}
-data_path=/ubc/cs/home/g/gbhatt/borg/ranking/data/custom_click
+data_path=''ranking/data/custom_click
 
 CUDA_VISIBLE_DEVICES=2,3,4 python main.py --n_gpus=$n_gpus --use_wandb \
     --batch_size=$batch_size --output_path=$output_path --output_folder=$model --data_path=$data_path \
@@ -54,7 +54,7 @@ fi
 if [[ $llm_train -gt 0 ]]
 then
 echo "LLM Training... "${model}
-data_path=/ubc/cs/home/g/gbhatt/borg/ranking/data/llm_data/processed
+data_path=''ranking/data/llm_data/processed
 
 CUDA_VISIBLE_DEVICES=7 python main.py --n_gpus=$n_gpus --use_wandb \
     --batch_size=$batch_size --output_path=$output_path --output_folder=$model --data_path=$data_path \
@@ -73,7 +73,7 @@ ckpt=20
 model=ranker_org
 
 echo "Org Training... "${model}
-data_path=/ubc/cs/home/g/gbhatt/borg/ranking/data/llm_data/processed
+data_path=''ranking/data/llm_data/processed
 model_reward=reward_org
 
 load_path_reward="${output_path}${model_reward}/checkpoints/checkpoint25.pth"

@@ -237,7 +237,7 @@ def main(args):
         print ('using org data ..')
         train_dataset = load_dataset(args.repo_name,name="clicks",
                                 split="train", # ["train", "test"]
-                                cache_dir="/ubc/cs/home/g/gbhatt/borg/ranking/data/",
+                                cache_dir="''ranking/data/",
                                 )
         
         #if args.eval_rels:
@@ -245,7 +245,7 @@ def main(args):
                     args.repo_name,
                     name="annotations",
                     split="test",
-                    cache_dir="/ubc/cs/home/g/gbhatt/borg/ranking/data/",
+                    cache_dir="ranking/data/",
                 )
         # else:
         #     test_dataset = load_dataset(args.repo_name,name="clicks",

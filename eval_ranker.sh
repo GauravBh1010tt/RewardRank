@@ -1,4 +1,4 @@
-ultr_mod='ips'
+ultr_mod='ips'20
 model_reward=reward_ips
 model=rr_ips_hard_corr_0.0
 model_ranker=ranker_ips
@@ -17,9 +17,9 @@ batch_size=256
 n_gpus=3
 soft_base=0.8
 soft_gain=0.05
-output_path=/ubc/cs/home/g/gbhatt/borg/ranking/outputs/
-data_path=/ubc/cs/home/g/gbhatt/borg/ranking/data/custom_click
-#data_path=/ubc/cs/home/g/gbhatt/borg/ranking/data/llm_data/processed
+output_path=''ranking/outputs/
+data_path=''ranking/data/custom_click
+#data_path=''ranking/data/llm_data/processed
 load_path="${output_path}${model}/checkpoints/checkpoint${ckpt}.pth"
 load_path_reward="${output_path}${model_reward}/checkpoints/checkpoint${ckpt}.pth"
 load_path_ranker="${output_path}${model_ranker}/checkpoints/checkpoint${ckpt}.pth"
@@ -44,7 +44,7 @@ fi
 if [[ $ips_eval -gt 0 ]]
 then
 echo "IPS Eval... "${model}
-data_path=/ubc/cs/home/g/gbhatt/borg/ranking/data/custom_click
+data_path=''ranking/data/custom_click
 
 batch_size=256
 n_gpus=6
@@ -62,7 +62,7 @@ if [[ $llm_eval -gt 0 ]]
 then
 model=ranker_llm
 echo "LLM Eval... "${model}
-data_path=/ubc/cs/home/g/gbhatt/borg/ranking/data/llm_data/processed
+data_path=''ranking/data/llm_data/processed
 load_path="${output_path}${model}/checkpoints/checkpoint${ckpt}.pth"
 n_gpus=1
 
