@@ -1,5 +1,6 @@
 # RewardRank
 
+<!--
 [![paper](https://img.shields.io/badge/paper-arXiv-cyan)](https://arxiv.org/pdf/2508.14180)
 
 
@@ -7,7 +8,7 @@
     <img src="figs/main.png" width="600px"/>
 </p>
 
-<!--
+
 
 > **[RewardRank: Optimizing True Learning-to-Rank Utility](https://arxiv.org/pdf/2508.14180)**<br>
 > [Gaurav Bhatt](https://gauravbh1010tt.github.io/), 
