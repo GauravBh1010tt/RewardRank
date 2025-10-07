@@ -1,9 +1,9 @@
 from numbers import Number
 import warnings
 import torch
-
-#from .group_parallel_loss_fn import GroupParallelLossFn
-from src.utils import dcg_all
+import torch.nn.functional as F
+from functools import partial
+import numpy as np
 
 from src.loss_utils import (
     DISCOUNT_FN,
@@ -28,97 +28,6 @@ PRED = "pred"
 TARGET = "target"
 DEFAULT_EPS=1e-10
 PADDED_Y_VALUE=-1
-
-
-class PiRankLoss(torch.nn.Module):
-    def __init__(
-        self,
-        sort_func=NEURAL_SORT,
-        gain_fn=EXP2,
-        rank_discount_fn=LOG2,
-        k=8,
-        ste=False,
-        **sort_kwargs,
-    ):
-        super().__init__()
-        self._check_deprecation_warning()
-        self._validate_inputs(sort_func, gain_fn, rank_discount_fn, k, **sort_kwargs)
-
-        self.sort_func = RELAXED_SORT_FN[sort_func]
-        self.gain_fn = GAIN_FN[gain_fn]
-        self.rank_discount_fn = DISCOUNT_FN[rank_discount_fn]
-        self.sort_kwargs = sort_kwargs
-        self.k = k
-        self.ste = ste
-
-    @staticmethod
-    def _check_deprecation_warning():
-        """Warn users about deprecation."""
-        warnings.warn(
-            "Please switch to using PiRankGPLoss. We will be deprecating PiRankLoss soon.",
-            DeprecationWarning,
-        )
-
-    @staticmethod
-    def _validate_inputs(sort_func, gain_fn, rank_discount_fn, k, **sort_kwargs):
-        """Validate the inputs to avoid runtime errors."""
-        if "temperature" in sort_kwargs:
-            assert isinstance(
-                sort_kwargs["temperature"], Number
-            ), "'temperature' must be numerical."
-
-        if "power" in sort_kwargs:
-            assert isinstance(sort_kwargs["power"], Number), "'power' must be numerical."
-
-        assert (k is None) or isinstance(k, int), "'k' must be int or None."
-
-        if gain_fn not in GAIN_FN:
-            raise ValueError(f"Unknown gain function: `{gain_fn}` is not in {list(GAIN_FN.keys())}")
-
-        if rank_discount_fn not in DISCOUNT_FN:
-            raise ValueError(
-                f"Unknown rank discount function: `{rank_discount_fn}` is not in {list(DISCOUNT_FN.keys())}"
-            )
-
-        if sort_func not in RELAXED_SORT_FN:
-            raise ValueError(
-                f"Unknown differentiable sort function: `{sort_func}` is not in {list(RELAXED_SORT_FN.keys())}"
-            )
-
-    def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        perm_mat = self._get_permutation_matrix(pred)
-        gains_sorted = self._compute_sorted_gains(perm_mat, target)
-        dcg = self._compute_dcg(gains_sorted)
-        max_dcg = compute_max_dcg(
-            target, gain_fn=self.gain_fn, rank_discount_fn=self.rank_discount_fn, k=self.k
-        )
-
-        # Avoiding division-by-zero without losing the gradient
-        ndcg = dcg.sum() / (1e-10 + max_dcg)
-        return 1.0 - ndcg  # Turning gain into loss
-
-    def _get_permutation_matrix(self, pred: torch.Tensor) -> torch.Tensor:
-        """Compute the permutation matrix based on the prediction and STE flag."""
-        if self.ste:
-            perm_mat_backward = self.sort_func(pred, **self.sort_kwargs)
-            perm_mat_forward = hard_sort(pred)
-            perm_mat = perm_mat_backward + (perm_mat_forward - perm_mat_backward).detach()
-        else:
-            perm_mat = self.sort_func(pred, **self.sort_kwargs)
-        return perm_mat
-
-    def _compute_sorted_gains(self, perm_mat: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        """Compute the sorted gains by multiplying the permutation matrix with gains."""
-        gains = self.gain_fn(target)
-        return torch.matmul(perm_mat, gains)
-
-    def _compute_dcg(self, gains_sorted: torch.Tensor) -> torch.Tensor:
-        """Compute the DCG (Discounted Cumulative Gain) score."""
-        n = gains_sorted.shape[0]
-        discount = self.rank_discount_fn(torch.arange(n, device=gains_sorted.device) + 1)
-        dcg = gains_sorted * discount
-        return dcg[: self.k]
-
 
 
 class PiRank_Loss(torch.nn.Module):
@@ -233,135 +142,386 @@ class PiRank_Loss(torch.nn.Module):
         ndcg = dcg / (self.epsilon + max_dcg)
 
         return 1.0 - ndcg  # turning gain into loss
+
+def swap_columns(tensor, i, j):
+    temp = tensor[:, i].clone()
+    tensor[:, i] = tensor[:, j]
+    tensor[:, j] = temp
+    return tensor
+
+def loss_urcc(logits, labels, device, mask, reward_mod, inputs_embeds, position_ids, doc_feats, 
+						   		labels_click, attention_mask, avg_lables):
+    #pdb.set_trace()
+
+    def utility_metric(click, f_logit, cf_logit, mask):
+        out = torch.div(torch.sigmoid(cf_logit[0]), torch.sigmoid(f_logit[0])) * click[:,0].unsqueeze(1) * (1-mask.int()[:,0].unsqueeze(1))
+        for i in range(1,click.shape[1]):
+            out += torch.div(torch.sigmoid(cf_logit[i]), torch.sigmoid(f_logit[i])) * click[:,i].unsqueeze(1) * (1-mask.int()[:,i].unsqueeze(1))
+
+        return out
+
+    u_pi = labels * (1-mask.int())
+    u_pi = u_pi.sum(dim=1)
+
+    with torch.no_grad():
+        out_factual = reward_mod(inputs_embeds=inputs_embeds, position_ids=position_ids, 
+	    					   labels_click = labels_click, attention_mask=attention_mask) # TODO: detach gradients
+    
+    loss = torch.tensor([0.0], requires_grad=True).to(device)
+
+    count = 0
+    aggr_pos_idx = []
     
 
+    for i in range(labels.shape[1]-1):
+        temp_pos_idx = position_ids.clone()
+        count = 0
+        aggr_pos_idx = []
+        for j in range(i+1,labels.shape[1]):
+            temp_pos_idx = swap_columns(temp_pos_idx, i,j)
+            aggr_pos_idx.append(temp_pos_idx)
+            count+=1
+            
+        with torch.no_grad():
+        
+            out_counterfact = reward_mod(inputs_embeds=inputs_embeds.repeat(count,1,1), position_ids=torch.concat(aggr_pos_idx), 
+                        labels_click = labels_click.repeat(count,1), attention_mask=attention_mask.repeat(count,1))
 
-def neuralNDCG(y_pred, y_true, device, padded_value_indicator=-1, temperature=1., powered_relevancies=True, k=None,
-               stochastic=False, n_samples=32, beta=0.1, log_scores=True, dummy_indices=None):
+        u_pi_ = utility_metric(labels.repeat(count,1), torch.stack(out_factual['per_item_logits']).repeat(1,count,1),
+                               torch.stack(out_counterfact['per_item_logits']), mask.repeat(count,1))
+
+        
+        temp_loss = (u_pi_ - u_pi.repeat(count).unsqueeze(1))*torch.log(1+torch.exp(-1*(torch.sigmoid(out_factual['logits'].repeat(count,1)) - torch.sigmoid(out_counterfact['logits']))))
+        loss += temp_loss.sum()
+        
+    return loss
+
+
+def segment_softmax(scores: torch.Tensor, segments: torch.Tensor) -> torch.Tensor:
     """
-    NeuralNDCG loss introduced in "NeuralNDCG: Direct Optimisation of a Ranking Metric via Differentiable
-    Relaxation of Sorting" - https://arxiv.org/abs/2102.07831. Based on the NeuralSort algorithm.
+    Softmax over grouped segments (e.g., each query).
+    scores: [N]
+    segments: [N] — segment/group ID per score
+    """
+    out = torch.empty_like(scores)
+    for seg_id in segments.unique():
+        mask = segments == seg_id
+        seg_scores = scores[mask]
+        out[mask] = F.softmax(seg_scores, dim=0)
+    return out
+
+
+def first_item_segment_mask(segments: torch.Tensor) -> torch.Tensor:
+    """
+    Returns a boolean mask [N] indicating the first item in each segment.
+    Assumes sorted segments.
+    """
+    return torch.cat([torch.tensor([True], device=segments.device),
+                      segments[1:] != segments[:-1]])
+
+
+def convert_query_ids_to_segment_ids(query_ids_np: np.ndarray, device=None) -> torch.Tensor:
+    """
+    Convert a numpy array of string query IDs to unique integer segment IDs as a PyTorch tensor.
+    Returns a tensor of shape [N] with contiguous integer segment IDs.
+    """
+    # Convert string array to list of strings
+    query_ids_str = query_ids_np.tolist()
+
+    # Map each unique string to an integer
+    unique_ids = list(sorted(set(query_ids_str)))
+    id_to_segment = {qid: i for i, qid in enumerate(unique_ids)}
+
+    # Map all query_ids to segment IDs
+    segment_ids = [id_to_segment[qid] for qid in query_ids_str]
+    return torch.tensor(segment_ids, dtype=torch.long, device=device)
+
+def normalize_probabilities(scores: torch.Tensor, segments: torch.Tensor) -> torch.Tensor:
+    """
+    Normalize scores within each segment to form probability distributions.
+    """
+    probs = torch.zeros_like(scores)
+    for seg_id in segments.unique():
+        mask = segments == seg_id
+        seg_scores = scores[mask]
+        total = seg_scores.sum()
+        if total > 0:
+            probs[mask] = seg_scores / total
+    return probs
+
+def listwise_softmax_ips(
+    relevance_scores: torch.Tensor,     # shape [B, N]
+    examination_probs: torch.Tensor,    # shape [B, N]
+    clicks: torch.Tensor,               # shape [B, N]
+    query_ids,            # shape [B, N]; each row shares same ID
+    dummy_indices: torch.Tensor,        # shape [B, N]; 1 = pad, 0 = valid
+    max_weight: float = 10.0,
+    device=None,
+) -> torch.Tensor:
+    """
+    PyTorch version of listwise_softmax_ips using segment-aware softmax and normalization.
+
+    Flattens inputs to [B*N] and uses query_ids as segments.
+    """
+    B, N = relevance_scores.shape
+    mask = (dummy_indices == 0)
+
+    query_ids = convert_query_ids_to_segment_ids(query_ids, device=device)
+
+    # Flatten all [B, N] → [B*N]
+    flat_scores = relevance_scores.reshape(-1)
+    flat_exam = examination_probs.reshape(-1)
+    flat_clicks = clicks.reshape(-1)
+    flat_mask = mask.reshape(-1)
+    flat_qids = query_ids.reshape(-1)
+
+    # Apply mask: zero out padded elements
+    flat_exam = flat_exam * flat_mask
+    flat_clicks = flat_clicks * flat_mask
+
+    # Step 1: IPS weights = 1 / examination
+    weights = 1.0 / (flat_exam + 1e-9)
+    weights = torch.clamp(weights, max=max_weight)
+
+    # Step 2: Label = weight * click
+    labels = weights * flat_clicks
+
+    # Step 3: Normalize labels per segment
+    norm_labels = normalize_probabilities(labels, flat_qids)
+
+    # Step 4: Softmax over scores (log-softmax used in cross-entropy)
+    log_softmax_scores = torch.zeros_like(flat_scores)
+    for qid in flat_qids.unique():
+        mask = (flat_qids == qid)
+        scores_q = flat_scores[mask]
+        log_softmax_scores[mask] = F.log_softmax(scores_q, dim=0)
+
+    # Step 5: Cross entropy: - sum p_i * log q_i
+    loss = -norm_labels * log_softmax_scores
+    loss = loss[flat_mask.bool()]  # apply final mask
+    return loss.mean()
+
+def pointwise_sigmoid_ips(
+    relevance_scores: torch.Tensor,      # shape [B, N]
+    examination_probs: torch.Tensor,     # shape [B, N]
+    clicks: torch.Tensor,                # shape [B, N]
+    max_weight: float = 10.0,
+    eps: float = 1e-9,
+    query_ids=None,
+    device=None,
+    dummy_indices: torch.Tensor = None,  # shape [B, N]; 1=pad, 0=item
+) -> torch.Tensor:
+    """
+    Batched Pointwise IPS loss with masking based on dummy indices.
+
+    Args:
+        relevance_scores: Predicted logits, shape [B, N]
+        examination_probs: Propensity scores, shape [B, N]
+        clicks: Binary click labels, shape [B, N]
+        max_weight: Max cap for inverse propensity weight
+        eps: Small constant for numerical stability
+        dummy_indices: Tensor of shape [B, N], where 1 = pad (ignored), 0 = valid item
+
+    Returns:
+        Scalar tensor: mean IPS loss over valid items.
+    """
+
+    # Compute inverse propensity weights
+    weights = 1.0 / (examination_probs + eps)
+    weights = torch.clamp(weights, min=0.0, max=max_weight)
+
+    # Apply weights to clicks
+    labels = weights * clicks.float()  # shape [B, N]
+
+    # Predicted probabilities
+    probs = torch.sigmoid(relevance_scores)  # shape [B, N]
+
+    # BCE-style log terms
+    log_p = torch.log(torch.clamp(probs, min=eps))
+    log_not_p = torch.log(torch.clamp(1.0 - probs, min=eps))
+
+    # Pointwise IPS loss per item
+    loss = -labels * log_p - (1.0 - labels) * log_not_p  # shape [B, N]
+
+    # Mask out padded items using dummy_indices
+    if dummy_indices is not None:
+        mask = (dummy_indices == 0)  # shape [B, N]; True for valid
+        loss = loss * mask.float()
+        total_valid = mask.float().sum()
+        return loss.sum() / (total_valid + eps)
+    else:
+        return loss.mean()
+
+def listwise_softmax_loss(pred_scores, true_relevance, device=None):
+    """
+    pred_scores: shape [batch_size, list_size]
+    true_relevance: same shape, ideally using rank-based gains
+    """
+    pred_prob = F.log_softmax(pred_scores, dim=1)
+    true_prob = F.softmax(true_relevance, dim=1)
+    return F.kl_div(pred_prob, true_prob, reduction='batchmean')
+
+def listMLE(y_pred, y_true, dummy_indices, eps=1e-9, device=None):
+    """
+    ListMLE loss introduced in "Listwise Approach to Learning to Rank - Theory and Algorithm".
     :param y_pred: predictions from the model, shape [batch_size, slate_length]
     :param y_true: ground truth labels, shape [batch_size, slate_length]
+    :param eps: epsilon value, used for numerical stability
     :param padded_value_indicator: an indicator of the y_true index containing a padded item, e.g. -1
-    :param temperature: temperature for the NeuralSort algorithm
-    :param powered_relevancies: whether to apply 2^x - 1 gain function, x otherwise
-    :param k: rank at which the loss is truncated
-    :param stochastic: whether to calculate the stochastic variant
-    :param n_samples: how many stochastic samples are taken, used if stochastic == True
-    :param beta: beta parameter for NeuralSort algorithm, used if stochastic == True
-    :param log_scores: log_scores parameter for NeuralSort algorithm, used if stochastic == True
     :return: loss value, a torch.Tensor
     """
-    dev = device
-    labels = torch.where(dummy_indices, -1.0, y_true)
+    # shuffle for randomised tie resolution
+    random_indices = torch.randperm(y_pred.shape[-1])
+    y_pred_shuffled = y_pred[:, random_indices]
+    y_true_shuffled = y_true[:, random_indices]
+    mask = dummy_indices
+    y_true_sorted, indices = y_true_shuffled.sort(descending=True, dim=-1)
 
-    if k is None:
-        k = y_true.shape[1]
+    preds_sorted_by_true = torch.gather(y_pred_shuffled, dim=1, index=indices)
+    preds_sorted_by_true[mask] = float("-inf")
 
-    mask = (y_true == padded_value_indicator)
-    # Choose the deterministic/stochastic variant
-    if stochastic:
-        P_hat = stochastic_neural_sort(y_pred.unsqueeze(-1), n_samples=n_samples, tau=temperature, mask=mask,
-                                       beta=beta, log_scores=log_scores,dev=device)
-    else:
-        P_hat = deterministic_neural_sort(y_pred.unsqueeze(-1), tau=temperature, mask=mask, dev=device).unsqueeze(0)
+    max_pred_values, _ = preds_sorted_by_true.max(dim=1, keepdim=True)
 
-    # Perform sinkhorn scaling to obtain doubly stochastic permutation matrices
-    P_hat = sinkhorn_scaling(P_hat.view(P_hat.shape[0] * P_hat.shape[1], P_hat.shape[2], P_hat.shape[3]),
-                             mask.repeat_interleave(P_hat.shape[0], dim=0), tol=1e-6, max_iter=50)
-    P_hat = P_hat.view(int(P_hat.shape[0] / y_pred.shape[0]), y_pred.shape[0], P_hat.shape[1], P_hat.shape[2])
+    preds_sorted_by_true_minus_max = preds_sorted_by_true - max_pred_values
 
-    # Mask P_hat and apply to true labels, ie approximately sort them
-    P_hat = P_hat.masked_fill(mask[None, :, :, None] | mask[None, :, None, :], 0.)
-    y_true_masked = y_true.masked_fill(mask, 0.).unsqueeze(-1).unsqueeze(0)
-    if powered_relevancies:
-        y_true_masked = torch.pow(2., y_true_masked) - 1.
+    cumsums = torch.cumsum(preds_sorted_by_true_minus_max.exp().flip(dims=[1]), dim=1).flip(dims=[1])
 
-    ground_truth = torch.matmul(P_hat, y_true_masked).squeeze(-1)
-    discounts = (torch.tensor(1.) / torch.log2(torch.arange(y_true.shape[-1], dtype=torch.float) + 2.)).to(dev)
-    discounted_gains = ground_truth * discounts
+    observation_loss = torch.log(cumsums + eps) - preds_sorted_by_true_minus_max
 
-    if powered_relevancies:
-        idcg = dcg_all(y_true, y_true, ats=[k]).permute(1, 0)
-    else:
-        idcg = dcg_all(y_true, y_true, ats=[k], gain_function=lambda x: x).permute(1, 0)
+    observation_loss[mask] = 0.0
 
-    discounted_gains = discounted_gains[:, :, :k]
-    ndcg = discounted_gains.sum(dim=-1) / (idcg + DEFAULT_EPS)
-    idcg_mask = idcg == 0.
-    ndcg = ndcg.masked_fill(idcg_mask.repeat(ndcg.shape[0], 1), 0.)
+    return torch.mean(torch.sum(observation_loss, dim=1))
 
-    assert (ndcg < 0.).sum() >= 0, "every ndcg should be non-negative"
-    if idcg_mask.all():
-        return torch.tensor(0.)
-
-    mean_ndcg = ndcg.sum() / ((~idcg_mask).sum() * ndcg.shape[0])  # type: ignore
-    #return -1. * mean_ndcg  # -1 cause we want to maximize NDCG
-    return 1 - mean_ndcg
-
-
-def neuralNDCG_transposed(y_pred, y_true, device, padded_value_indicator=PADDED_Y_VALUE, temperature=1.,
-                          powered_relevancies=True, k=None, stochastic=False, n_samples=32, beta=0.1, log_scores=True,
-                          max_iter=50, tol=1e-6):
+def listNet(y_pred, y_true, dummy_indices, eps=1e-9, device=None):
     """
-    NeuralNDCG Transposed loss introduced in "NeuralNDCG: Direct Optimisation of a Ranking Metric via Differentiable
-    Relaxation of Sorting" - https://arxiv.org/abs/2102.07831. Based on the NeuralSort algorithm.
+    ListNet loss introduced in "Learning to Rank: From Pairwise Approach to Listwise Approach".
     :param y_pred: predictions from the model, shape [batch_size, slate_length]
     :param y_true: ground truth labels, shape [batch_size, slate_length]
+    :param eps: epsilon value, used for numerical stability
     :param padded_value_indicator: an indicator of the y_true index containing a padded item, e.g. -1
-    :param temperature: temperature for the NeuralSort algorithm
-    :param powered_relevancies: whether to apply 2^x - 1 gain function, x otherwise
-    :param k: rank at which the loss is truncated
-    :param stochastic: whether to calculate the stochastic variant
-    :param n_samples: how many stochastic samples are taken, used if stochastic == True
-    :param beta: beta parameter for NeuralSort algorithm, used if stochastic == True
-    :param log_scores: log_scores parameter for NeuralSort algorithm, used if stochastic == True
-    :param max_iter: maximum iteration count for Sinkhorn scaling
-    :param tol: tolerance for Sinkhorn scaling
     :return: loss value, a torch.Tensor
     """
-    dev = device
+    y_pred = y_pred.clone()
+    y_true = y_true.clone()
+    mask = dummy_indices
+    y_pred[mask] = float('-inf')
+    y_true[mask] = float('-inf')
 
-    if k is None:
-        k = y_true.shape[1]
+    preds_smax = F.softmax(y_pred, dim=1)
+    true_smax = F.softmax(y_true, dim=1)
 
-    mask = (y_true == padded_value_indicator)
+    preds_smax = preds_smax + eps
+    preds_log = torch.log(preds_smax)
 
-    if stochastic:
-        P_hat = stochastic_neural_sort(y_pred.unsqueeze(-1), n_samples=n_samples, tau=temperature, mask=mask,
-                                       beta=beta, log_scores=log_scores)
+    return torch.mean(-torch.sum(true_smax * preds_log, dim=1))
+
+
+def lambdaLoss(y_pred, y_true, dummy_indices, eps=1e-9, device=None, weighing_scheme='lambdaRank_scheme', k=None, sigma=1., mu=10.,
+               reduction="mean", reduction_log="binary"):
+    """
+    LambdaLoss framework for LTR losses implementations, introduced in "The LambdaLoss Framework for Ranking Metric Optimization".
+    Contains implementations of different weighing schemes corresponding to e.g. LambdaRank or RankNet.
+    :param y_pred: predictions from the model, shape [batch_size, slate_length]
+    :param y_true: ground truth labels, shape [batch_size, slate_length]
+    :param eps: epsilon value, used for numerical stability
+    :param padded_value_indicator: an indicator of the y_true index containing a padded item, e.g. -1
+    :param weighing_scheme: a string corresponding to a name of one of the weighing schemes
+    :param k: rank at which the loss is truncated
+    :param sigma: score difference weight used in the sigmoid function
+    :param mu: optional weight used in NDCGLoss2++ weighing scheme
+    :param reduction: losses reduction method, could be either a sum or a mean
+    :param reduction_log: logarithm variant used prior to masking and loss reduction, either binary or natural
+    :return: loss value, a torch.Tensor
+    """
+    #weighing_scheme = lambdaRank_scheme
+    device = y_pred.device
+    y_pred = y_pred.clone()
+    y_true = y_true.clone()
+
+    padded_mask = dummy_indices
+    y_pred[padded_mask] = float("-inf")
+    y_true[padded_mask] = float("-inf")
+
+    # Here we sort the true and predicted relevancy scores.
+    y_pred_sorted, indices_pred = y_pred.sort(descending=True, dim=-1)
+    y_true_sorted, _ = y_true.sort(descending=True, dim=-1)
+
+    # After sorting, we can mask out the pairs of indices (i, j) containing index of a padded element.
+    true_sorted_by_preds = torch.gather(y_true, dim=1, index=indices_pred)
+    true_diffs = true_sorted_by_preds[:, :, None] - true_sorted_by_preds[:, None, :]
+    padded_pairs_mask = torch.isfinite(true_diffs)
+
+    if weighing_scheme != "ndcgLoss1_scheme":
+        padded_pairs_mask = padded_pairs_mask & (true_diffs > 0)
+
+    ndcg_at_k_mask = torch.zeros((y_pred.shape[1], y_pred.shape[1]), dtype=torch.bool, device=device)
+    ndcg_at_k_mask[:k, :k] = 1
+
+    # Here we clamp the -infs to get correct gains and ideal DCGs (maxDCGs)
+    true_sorted_by_preds.clamp_(min=0.)
+    y_true_sorted.clamp_(min=0.)
+
+    # Here we find the gains, discounts and ideal DCGs per slate.
+    pos_idxs = torch.arange(1, y_pred.shape[1] + 1).to(device)
+    D = torch.log2(1. + pos_idxs.float())[None, :]
+    maxDCGs = torch.sum(((torch.pow(2, y_true_sorted) - 1) / D)[:, :k], dim=-1).clamp(min=eps)
+    G = (torch.pow(2, true_sorted_by_preds) - 1) / maxDCGs[:, None]
+
+    # Here we apply appropriate weighing scheme - ndcgLoss1, ndcgLoss2, ndcgLoss2++ or no weights (=1.0)
+    if weighing_scheme is None:
+        weights = 1.
     else:
-        P_hat = deterministic_neural_sort(y_pred.unsqueeze(-1), tau=temperature, mask=mask).unsqueeze(0)
+        weights = globals()[weighing_scheme](G, D, mu, true_sorted_by_preds)  # type: ignore
 
-    # Perform sinkhorn scaling to obtain doubly stochastic permutation matrices
-    P_hat_masked = sinkhorn_scaling(P_hat.view(P_hat.shape[0] * y_pred.shape[0], y_pred.shape[1], y_pred.shape[1]),
-                                    mask.repeat_interleave(P_hat.shape[0], dim=0), tol=tol, max_iter=max_iter)
-    P_hat_masked = P_hat_masked.view(P_hat.shape[0], y_pred.shape[0], y_pred.shape[1], y_pred.shape[1])
-    discounts = (torch.tensor(1) / torch.log2(torch.arange(y_true.shape[-1], dtype=torch.float) + 2.)).to(dev)
-
-    # This takes care of the @k metric truncation - if something is @>k, it is useless and gets 0.0 discount
-    discounts[k:] = 0.
-    discounts = discounts[None, None, :, None]
-
-    # Here the discounts become expected discounts
-    discounts = torch.matmul(P_hat_masked.permute(0, 1, 3, 2), discounts).squeeze(-1)
-    if powered_relevancies:
-        gains = torch.pow(2., y_true) - 1
-        discounted_gains = gains.unsqueeze(0) * discounts
-        idcg = dcg_all(y_true, y_true, ats=[k]).squeeze()
+    # We are clamping the array entries to maintain correct backprop (log(0) and division by 0)
+    scores_diffs = (y_pred_sorted[:, :, None] - y_pred_sorted[:, None, :]).clamp(min=-1e8, max=1e8)
+    scores_diffs.masked_fill(torch.isnan(scores_diffs), 0.)
+    weighted_probas = (torch.sigmoid(sigma * scores_diffs).clamp(min=eps) ** weights).clamp(min=eps)
+    if reduction_log == "natural":
+        losses = torch.log(weighted_probas)
+    elif reduction_log == "binary":
+        losses = torch.log2(weighted_probas)
     else:
-        gains = y_true
-        discounted_gains = gains.unsqueeze(0) * discounts
-        idcg = dcg_all(y_true, y_true, ats=[k]).squeeze()
+        raise ValueError("Reduction logarithm base can be either natural or binary")
 
-    ndcg = discounted_gains.sum(dim=2) / (idcg + DEFAULT_EPS)
-    idcg_mask = idcg == 0.
-    ndcg = ndcg.masked_fill(idcg_mask, 0.)
+    if reduction == "sum":
+        loss = -torch.sum(losses[padded_pairs_mask & ndcg_at_k_mask])
+    elif reduction == "mean":
+        loss = -torch.mean(losses[padded_pairs_mask & ndcg_at_k_mask])
+    else:
+        raise ValueError("Reduction method can be either sum or mean")
 
-    assert (ndcg < 0.).sum() >= 0, "every ndcg should be non-negative"
-    if idcg_mask.all():
-        return torch.tensor(0.)
+    return loss
 
-    mean_ndcg = ndcg.sum() / ((~idcg_mask).sum() * ndcg.shape[0])  # type: ignore
-    return -1. * mean_ndcg  # -1 cause we want to maximize NDCG
+
+def ndcgLoss1_scheme(G, D, *args):
+    return (G / D)[:, :, None]
+
+
+def ndcgLoss2_scheme(G, D, *args):
+    pos_idxs = torch.arange(1, G.shape[1] + 1, device=G.device)
+    delta_idxs = torch.abs(pos_idxs[:, None] - pos_idxs[None, :])
+    deltas = torch.abs(torch.pow(torch.abs(D[0, delta_idxs - 1]), -1.) - torch.pow(torch.abs(D[0, delta_idxs]), -1.))
+    deltas.diagonal().zero_()
+
+    return deltas[None, :, :] * torch.abs(G[:, :, None] - G[:, None, :])
+
+
+def lambdaRank_scheme(G, D, *args):
+    return torch.abs(torch.pow(D[:, :, None], -1.) - torch.pow(D[:, None, :], -1.)) * torch.abs(G[:, :, None] - G[:, None, :])
+
+
+def ndcgLoss2PP_scheme(G, D, *args):
+    return args[0] * ndcgLoss2_scheme(G, D) + lambdaRank_scheme(G, D)
+
+
+def rankNet_scheme(G, D, *args):
+    return 1.
+
+
+def rankNetWeightedByGTDiff_scheme(G, D, *args):
+    return torch.abs(args[1][:, :, None] - args[1][:, None, :])
+
+
+def rankNetWeightedByGTDiffPowed_scheme(G, D, *args):
+    return torch.abs(torch.pow(args[1][:, :, None], 2) - torch.pow(args[1][:, None, :], 2))

@@ -7,19 +7,11 @@ import argparse
 import numpy as np
 import pandas as pd
 from pathlib import Path
-# from bbm.src.model import CrossEncoder, IPSCrossEncoder, PBMCrossEncoder
 from collections import defaultdict
 
 def infer_ultr(pos_idx, device, model='ips'):
-
-    # fix the seed for reproducibility
-    #print ('here')
-    # if model == 'ips':
-    #     model= IPSCrossEncoder.from_pretrained("philipphager/baidu-ultr_uva-bert_ips-pointwise")
-    # else:
-    #     model= PBMCrossEncoder.from_pretrained("philipphager/baidu-ultr_uva-bert_twotower")
-    df = pd.read_csv("/home/ec2-user/workspace/cf_rank/bbm/propensities/global_all_pairs.csv")
-    model = torch.zeros(50, dtype=torch.float64).to(device)
+    df = pd.read_csv("/ubc/cs/home/g/gbhatt/borg/ranking/CF_ranking/bbm/propensities/global_all_pairs.csv")
+    model = torch.zeros(500, dtype=torch.float64).to(device)
     positions = df["position"].values
     propensities = torch.tensor(df.iloc[:, 1].values).to(device)
 
@@ -29,15 +21,7 @@ def infer_ultr(pos_idx, device, model='ips'):
     return examination
 
 
-
 def infer_ultr1(examination, relevance, batch, pos_idx, device, model='ips'):
-
-    # fix the seed for reproducibility
-    #print ('here')
-    # if model == 'ips':
-    #     model= IPSCrossEncoder.from_pretrained("philipphager/baidu-ultr_uva-bert_ips-pointwise")
-    # else:
-    #     model= PBMCrossEncoder.from_pretrained("philipphager/baidu-ultr_uva-bert_twotower")
 
     pos_org = torch.tensor(batch['position']).to(device)
     look_pos = (1-(pos_idx == pos_org).int()).sum(dim=1)

@@ -21,6 +21,39 @@ from transformers.modeling_attn_mask_utils import (
     _prepare_4d_causal_attention_mask_for_sdpa,
 )
 
+#from src.utils import weighted_bce_with_logits_loss, weighted_focal_bce_with_logits_loss, weighted_mse_loss, weighted_l1_loss, weighted_huber_loss, weighted_focal_mse_loss, weighted_focal_l1_loss
+
+import torch
+
+class Rotary(torch.nn.Module):
+    def __init__(self, dim, base=10000):
+        super().__init__()
+        inv_freq = 1.0 / (base ** (torch.arange(0, dim, 2).float() / dim))
+        self.register_buffer("inv_freq", inv_freq)
+        self.seq_len_cached = None
+        self.cos_cached = None
+        self.sin_cached = None
+
+    def forward(self, x, seq_dim=1):
+        seq_len = x.shape[seq_dim]
+        if seq_len != self.seq_len_cached:
+            self.seq_len_cached = seq_len
+            t = torch.arange(x.shape[seq_dim], device=x.device).type_as(self.inv_freq)
+            freqs = torch.einsum("i,j->ij", t, self.inv_freq)
+            emb = torch.cat((freqs, freqs), dim=-1).to(x.device)
+            self.cos_cached = emb.cos()[:, None, None, :]  # [L,1,1,D]
+            self.sin_cached = emb.sin()[:, None, None, :]  # [L,1,1,D]
+        return self.cos_cached, self.sin_cached
+
+def rotate_half(x):
+    x1, x2 = x[..., : x.shape[-1] // 2], x[..., x.shape[-1] // 2 :]
+    return torch.cat((-x2, x1), dim=x1.ndim - 1)  # avoid dim=-1 for old torch
+
+@torch.jit.script
+def apply_rotary_pos_emb(q, k, cos, sin):
+    return (q * cos) + (rotate_half(q) * sin), (k * cos) + (rotate_half(k) * sin)
+
+
 class BertEmbeddings(nn.Module):
     """Construct the embeddings from word, position and token_type embeddings."""
 
@@ -29,14 +62,13 @@ class BertEmbeddings(nn.Module):
 
         self.config = config
         self.use_pos_embed = False
+        self.config.use_pad = False
 
-        if config.use_word_embed:
-            self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size, padding_idx=config.pad_token_id)
         if config.use_pos_embed:
             self.use_pos_embed = True
             self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size) #TODO: other ways of PE
 
-        self.token_type_embeddings = nn.Embedding(config.type_vocab_size, config.hidden_size)
+        #self.token_type_embeddings = nn.Embedding(config.type_vocab_size, config.hidden_size)
 
         # self.LayerNorm is not snake-cased to stick with TensorFlow model variable name and be able to load
         # any TensorFlow checkpoint file
@@ -47,9 +79,9 @@ class BertEmbeddings(nn.Module):
         self.register_buffer(
             "position_ids", torch.arange(config.max_position_embeddings).expand((1, -1)), persistent=False
         )
-        self.register_buffer(
-            "token_type_ids", torch.zeros(self.position_ids.size(), dtype=torch.long), persistent=False
-        )
+        # self.register_buffer(
+        #     "token_type_ids", torch.zeros(self.position_ids.size(), dtype=torch.long), persistent=False
+        # )
 
     def forward(
         self,
@@ -67,42 +99,72 @@ class BertEmbeddings(nn.Module):
 
         seq_length = input_shape[1]
 
-        if position_ids is None:
-            position_ids = self.position_ids[:, past_key_values_length : seq_length + past_key_values_length]
-
         # Setting the token_type_ids to the registered buffer in constructor where it is all zeros, which usually occurs
         # when its auto-generated, registered buffer helps users when tracing the model without passing token_type_ids, solves
         # issue #5664
-        if token_type_ids is None:
-            if hasattr(self, "token_type_ids"):
-                buffered_token_type_ids = self.token_type_ids[:, :seq_length]
-                buffered_token_type_ids_expanded = buffered_token_type_ids.expand(input_shape[0], seq_length)
-                token_type_ids = buffered_token_type_ids_expanded
-            else:
-                token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=self.position_ids.device)
+        # if token_type_ids is None:
+        #     if hasattr(self, "token_type_ids"):
+        #         buffered_token_type_ids = self.token_type_ids[:, :seq_length]
+        #         buffered_token_type_ids_expanded = buffered_token_type_ids.expand(input_shape[0], seq_length)
+        #         token_type_ids = buffered_token_type_ids_expanded
+        #     else:
+        #         token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=self.position_ids.device)
 
-        if inputs_embeds is None:
-            inputs_embeds = self.word_embeddings(input_ids)
-        token_type_embeddings = self.token_type_embeddings(token_type_ids)
+        # if inputs_embeds is None:
+        #     inputs_embeds = self.word_embeddings(input_ids)
+        # token_type_embeddings = self.token_type_embeddings(token_type_ids)
 
-        embeddings = inputs_embeds + token_type_embeddings
-        #if self.position_embedding_type == "absolute":
+        # embeddings = inputs_embeds #+ token_type_embeddings
+        # if self.position_embedding_type == "absolute":
 
         if self.use_pos_embed:
+
+            if position_ids is None:
+                position_ids = self.position_ids[:, past_key_values_length : seq_length + past_key_values_length]
 
             if soft_position_ids==None:
                 position_embeddings = self.position_embeddings(position_ids)
             else:
                 #pdb.set_trace()
                 phat_mat = soft_position_ids
-                pos_emb_mat = self.position_embeddings.weight[1:phat_mat.shape[-1]+1,:] # remove the 1st row as it is reserved for padded index
-                soft_pos_mat = torch.matmul(phat_mat.permute(0,2,1), pos_emb_mat) # permute p_hat to ensure positions are multiplied with position_embedding_matrix
-                position_embeddings = soft_pos_mat #TODO:linear combination of items instead of positions
-            embeddings += position_embeddings
+                
+                # if self.config.choice2:
+                #     pos_emb_mat = self.position_embeddings(position_ids)
+                # else:
+                # pos_emb_mat = self.position_embeddings.weight[1:phat_mat.shape[-1]+1,:] # remove the 1st row as it is reserved for padded index
+                
+                if self.config.ips_exp:
+                    #print('here')
+
+                    if self.config.lin_pos:
+                        pos_emb_mat = self.position_embeddings.weight[1:phat_mat.shape[-1]+1,:] # remove the 1st row; Baidu_Ultr examination prob starts from idx=1, and pos=0 is reserved for QG padding
+                        soft_pos_mat = torch.matmul(phat_mat.permute(0,2,1), pos_emb_mat) # Linear combination of positions
+                        #soft_pos_mat = torch.matmul(phat_mat, pos_emb_mat) # Wrong
+                        position_embeddings = soft_pos_mat
+                        
+                        if self.config.use_pad:
+                            pad_mask = (position_ids == 0).unsqueeze(-1)
+                            pad_embed = self.position_embeddings.weight[0].view(1,1,-1)
+                            position_embeddings = torch.where(pad_mask, pad_embed, soft_pos_mat)
+                    else:
+                        #pdb.set_trace()
+                        position_embeddings = self.position_embeddings(position_ids)
+                        inputs_embeds = torch.bmm(phat_mat, inputs_embeds) # convex combination of items
+                else:
+                    if self.config.lin_pos:
+                        pos_emb_mat = self.position_embeddings.weight[0:phat_mat.shape[-1],:]
+                        position_embeddings = torch.matmul(phat_mat.permute(0,2,1), pos_emb_mat) # permute p_hat to ensure positions are multiplied with position_embedding_matrix
+                    else:
+                        position_embeddings = self.position_embeddings(position_ids)
+                        inputs_embeds = torch.bmm(phat_mat, inputs_embeds) # convex combination of items
+                #pdb.set_trace()
+            embeddings = inputs_embeds + position_embeddings
+        else:
+            embeddings = inputs_embeds
+        
         embeddings = self.LayerNorm(embeddings)
         embeddings = self.dropout(embeddings)
         return embeddings
-
 
 class BertEncoder(nn.Module):
     def __init__(self, config):
@@ -334,7 +396,7 @@ class BertModel(BertPreTrainedModel):
             else:
                 token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=device)
 
-        #pdb.set_trace()
+        # pdb.set_trace()
 
         embedding_output = self.embeddings(
             input_ids=input_ids,
@@ -354,7 +416,7 @@ class BertModel(BertPreTrainedModel):
             and head_mask is None
             and not output_attentions
         )
-
+        # pdb.set_trace()
         # Expand the attention mask
         if use_sdpa_attention_masks:
             # Expand the attention mask for SDPA.
@@ -443,7 +505,14 @@ class BertReward(BertPreTrainedModel):
         )
         self.dropout = nn.Dropout(classifier_dropout)
         #self.doc_feat_transform = nn.Linear(config.hidden_size, config.num_labels)
+
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
+
+        if config.per_item_feats:
+            if config.concat_feats:
+                self.classifier_per_items = nn.Linear(config.hidden_size*2, 1)
+            else:
+                self.classifier_per_items = nn.Linear(config.hidden_size, 1)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -459,9 +528,11 @@ class BertReward(BertPreTrainedModel):
         doc_feats: Optional[torch.Tensor] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
         labels: Optional[torch.Tensor] = None,
+        labels_click: Optional[torch.Tensor] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
+        label_weights: Optional[torch.Tensor] = None,
     ) -> Union[Tuple[torch.Tensor], SequenceClassifierOutput]:
         r"""
         labels (`torch.LongTensor` of shape `(batch_size,)`, *optional*):
@@ -497,6 +568,10 @@ class BertReward(BertPreTrainedModel):
         loss = None
 
         if labels is not None:
+
+            if self.num_labels == 1:
+                logits = logits.squeeze()
+                labels = labels.squeeze()
             if self.config.problem_type is None:
                 if self.num_labels == 1:
                     self.config.problem_type = "regression"
@@ -504,25 +579,74 @@ class BertReward(BertPreTrainedModel):
                     self.config.problem_type = "classification"
 
             if self.config.problem_type == "regression":
-                loss_fct = MSELoss()
+                
+                # if self.config.reward_loss_type == 'mse':
+                #     loss_fct = weighted_mse_loss
+                # elif self.config.reward_loss_type == 'l1':
+                #     loss_fct = weighted_l1_loss
+                # elif self.config.reward_loss_type == 'focal_l1':
+                #     loss_fct = weighted_focal_l1_loss
+                # elif self.config.reward_loss_type == 'focal_mse':
+                #     loss_fct = weighted_focal_mse_loss
+                
+                #loss_fct = MSELoss()
                 if self.num_labels == 1:
-                    loss = loss_fct(logits.squeeze(), labels.squeeze())
+                    loss = loss_fct(logits.squeeze(), labels.squeeze(), weights=label_weights)
                 else:
-                    loss = loss_fct(logits, labels)
+                    loss = loss_fct(logits, labels, weights=label_weights)
+                    
             elif self.config.problem_type == "classification":
                 loss_fct = BCEWithLogitsLoss()
+                #pdb.set_trace()
                 loss = loss_fct(logits.squeeze(), labels)
-
+                # if self.config.reward_loss_type == 'bce':
+                #     loss = weighted_bce_with_logits_loss(logits, labels, weights=label_weights)
+                # else:
+                #     loss = weighted_focal_bce_with_logits_loss(logits, labels, weights=label_weights)
+                
+        #pdb.set_trace()
+        #loss = loss.to(torch.float32)
         if not return_dict:
             output = (logits,) + outputs[2:]
             return ((loss,) + output) if loss is not None else output
+
+        per_item_logits = []
+        per_item_loss = torch.tensor([0.0], requires_grad=True).to(item_feats.device)
+
+        if self.config.per_item_feats:
+            # loss_fct = BCEWithLogitsLoss(reduction='none')
+            # for i in range(item_feats.shape[1]):
+            #     pooled_output = self.dropout(item_feats[:,i,:])
+            #     per_item_logits.append(self.classifier_per_items(pooled_output))
+            #     #pdb.set_trace()
+            #     #loss_item = loss_fct(torch.sigmoid(per_item_logits[-1]).squeeze(), labels_click[:,i].float()) #TODO: verify if this is correct
+            #     loss_item = loss_fct(per_item_logits[-1].squeeze(), labels_click[:,i].float())
+            #     loss_item = loss_item * attention_mask[:,i]
+            #     per_item_loss += loss_item.mean()
+
+            feats_drop = self.dropout(item_feats) # [B,N,D]->[B,N,D]
+            per_item_logits = self.classifier_per_items(feats_drop).squeeze(-1) # [B,N,D]->[B,N,1]
+
+            loss_fct = BCEWithLogitsLoss(reduction='none')
+            per_item_loss = loss_fct(per_item_logits, labels_click.float()) # [B,N]
+
+            if attention_mask is not None:
+                per_item_loss = per_item_loss * attention_mask.float() # [B,N]
+                denom = attention_mask.sum().clamp_min(1.0)
+            else:
+                denom = torch.tensor(per_item_loss.numel(), device=per_item_loss.device, dtype=per_item_loss.dtype)
+
+            per_item_loss = per_item_loss.sum() / denom
         
+        #pdb.set_trace()
         out_dict={
             'loss':loss,
             'logits':logits,
             'hidden_states':outputs.hidden_states,
             'attentions':outputs.attentions,
             'cls_token':pooled_output,
+            'per_item_logits':per_item_logits,
+            'per_item_loss':per_item_loss,
         }
 
         return out_dict
