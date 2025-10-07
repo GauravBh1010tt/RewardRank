@@ -5,7 +5,7 @@ ultr_mod='ips'
 model_ranker=ranker_ips
 model_reward=reward_cls_item
 exp_type=ips_bin
-base_dir=/ubc/cs/home/g/gbhatt/borg/ranking
+base_dir="path_to_base_dir"
 
 ckpt=10
 

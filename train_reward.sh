@@ -5,7 +5,7 @@ model=reward_cls_item
 model_reward=$model
 exp_type=p2_llm_t0.5
 ckpt=20
-base_dir=/ubc/cs/home/g/gbhatt/borg/ranking
+base_dir="path_to_base_dir"
 
 debug=0
 ips_train=0
