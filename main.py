@@ -216,14 +216,14 @@ def main(args):
         print ('using org data ..')
         train_dataset = load_dataset(args.repo_name,name="clicks",
                                 split="train", # ["train", "test"]
-                                cache_dir="/ubc/cs/home/g/gbhatt/borg/ranking/data/",
+                                cache_dir="/",
                                 )
         
         test_dataset = load_dataset(
                     args.repo_name,
                     name="annotations",
                     split="test",
-                    cache_dir="/ubc/cs/home/g/gbhatt/borg/ranking/data/",
+                    cache_dir="/",
                 )
     else:
         collate_fn = cf
