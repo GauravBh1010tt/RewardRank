@@ -1,5 +1,33 @@
 # RewardRank
 
+[![paper](https://img.shields.io/badge/paper-arXiv2025-cyan)](https://arxiv.org/pdf/2508.14180)
+
+
+<p align="center">
+    <img src="figs/main_final.png" width="600px"/>
+</p>
+
+> **[RewardRank: Optimizing True Learning-to-Rank Utility](https://arxiv.org/pdf/2508.14180)**<br>
+> [Gaurav Bhatt*](https://gauravbh1010tt.github.io/), Kiran Koshy Thekumparampil, Tanmay Gangwani, Tesi Xiao, Leonid Sigal
+<br>
+
+> $Abstract$. Traditional ranking systems optimize offline proxy objectives that rely on oversimplified assumptions about user behavior, often neglecting factors such as position bias and item diversity. Consequently, these models fail to improve true
+counterfactual utilities such as such as click-through rate or purchase probability,
+when evaluated in online A/B tests. We introduce RewardRank, a data-driven
+learning-to-rank (LTR) framework for counterfactual utility maximization. RewardRank first learns a reward model that predicts the utility of any ranking
+directly from logged user interactions, and then trains a ranker to maximize this
+reward using a differentiable soft permutation operator. To enable rigorous and
+reproducible evaluation, we further propose two benchmark suites: (i) Parametric
+Oracle Evaluation (PO-Eval), which employs an open-source click model as a
+counterfactual oracle on the Baidu-ULTR dataset, and (ii) LLM-as-User Evaluation (LAU-Eval), which simulates realistic user behavior via large language
+models on the Amazon-KDD-Cup dataset. RewardRank achieves the highest
+counterfactual utility across both benchmarks and demonstrates that optimizing
+classical metrics such as NDCG is sub-optimal for maximizing true user utility.
+Finally, using real user feedback from the Baidu-ULTR dataset, RewardRank establishes a new state of the art in offline relevance performance. Overall, our
+results show that learning-to-rank can be reformulated as direct optimization of
+counterfactual utility, achieved in a purely data-driven manner without relying
+on explicit modeling assumptions such as position bias
+
 ## Outline
 
 - [RewardRank](#rewardrank)
@@ -186,18 +214,14 @@ python eval_llm.py --batch_size=$batch_size --output_path=$output_path \
 ```
 Don’t forget to set the required flags and paths in the `eval_ranker.sh` script before running evaluations.
 
-<!--
+
 ## Citation
 If you find this repo useful, please cite:
 ```
-@misc{bhatt2025rewardrank,
-      title={RewardRank: Optimizing True Learning-to-Rank Utility}, 
-      author={Gaurav Bhatt and Kiran Koshy Thekumparampil and Tanmay Gangwani and Tesi Xiao and Leonid Sigal},
-      year={2025},
-      eprint={2508.14180},
-      archivePrefix={arXiv},
-      primaryClass={cs.IR},
-      url={https://arxiv.org/abs/2508.14180}, 
+@article{bhatt2025rewardrank,
+  title={RewardRank: Optimizing True Learning-to-Rank Utility},
+  author={Bhatt, Gaurav and Thekumparampil, Kiran Koshy and Gangwani, Tanmay and Xiao, Tesi and Sigal, Leonid},
+  journal={arXiv preprint arXiv:2508.14180},
+  year={2025}
 }
 ```
--->
